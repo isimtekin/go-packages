@@ -1,0 +1,249 @@
+# Package Template System
+
+Automatic package scaffolding system for go-packages monorepo.
+
+## 🚀 Quick Start
+
+Create a new package with one command:
+
+```bash
+make create-package
+# Enter package name: redis-client
+```
+
+Or use the script directly:
+
+```bash
+./scripts/create-package.sh redis-client
+```
+
+## 📦 What Gets Created
+
+When you run `create-package`, it automatically generates:
+
+```
+package-name/
+├── client.go           # Main client implementation with connection management
+├── client_test.go      # Unit tests with table-driven tests
+├── config.go          # Configuration with validation
+├── errors.go          # Error definitions and helper functions
+├── options.go         # Functional options pattern
+├── go.mod             # Module definition
+├── README.md          # Complete documentation template
+└── .gitignore         # Standard Go gitignore
+```
+
+## 🎯 Generated Code Features
+
+### 1. Client Structure
+- Thread-safe with mutex protection
+- Context support for all operations
+- Graceful shutdown with Close()
+- Connection state management
+
+### 2. Configuration
+- Default configuration function
+- Validation method
+- JSON/YAML tags for serialization
+
+### 3. Functional Options
+```go
+client, err := packagename.NewWithOptions(
+    packagename.WithHost("example.com"),
+    packagename.WithPort(9090),
+    packagename.WithTimeout(10*time.Second),
+)
+```
+
+### 4. Error Handling
+- Predefined error variables
+- Error checking helper functions
+- Proper error wrapping
+
+### 5. Testing
+- Table-driven test structure
+- Test for each component
+- Coverage for error cases
+
+## 📝 Template Variables
+
+The script automatically handles:
+- Package name conversion (redis-client → redisclient)
+- Module path setup (github.com/isimtekin/go-packages/package-name)
+- README generation with proper examples
+- Test file with correct imports
+
+## 🛠️ Post-Creation Workflow
+
+After creating a package:
+
+### 1. Implement Your Logic
+
+Replace the TODO sections in `client.go`:
+
+```go
+// TODO: Implement connection logic
+func (c *Client) connect() error {
+    // Your connection code here
+    return nil
+}
+```
+
+### 2. Add Your Methods
+
+Replace the example `DoSomething` method:
+
+```go
+func (c *Client) Get(ctx context.Context, key string) (string, error) {
+    // Your actual implementation
+}
+```
+
+### 3. Update Configuration
+
+Modify `config.go` fields for your needs:
+
+```go
+type Config struct {
+    DatabaseName string
+    MaxPoolSize  int
+    // Your specific fields
+}
+```
+
+### 4. Test Your Package
+
+```bash
+cd package-name
+go test -v -cover ./...
+```
+
+### 5. Release
+
+```bash
+make release
+# Package name: package-name
+# Version: 0.1.0
+```
+
+## 🔧 Makefile Commands
+
+### Package Creation
+```bash
+make create-package    # Interactive package creation
+make quick-start       # Create and release v0.1.0
+```
+
+### Development
+```bash
+make test             # Test specific package
+make test-all         # Test all packages
+make fmt              # Format all code
+make lint             # Run linter (requires golangci-lint)
+```
+
+### Release Management
+```bash
+make release          # Release specific version
+make bump-version     # Auto-increment version
+make list-versions    # Show all versions
+make list-packages    # Show all packages
+```
+
+## 📋 Customization Guide
+
+### Adding New Option Functions
+
+Edit `options.go`:
+
+```go
+func WithCustomField(value string) Option {
+    return func(c *Config) {
+        c.CustomField = value
+    }
+}
+```
+
+### Adding New Error Types
+
+Edit `errors.go`:
+
+```go
+var (
+    ErrCustomError = errors.New("custom error description")
+)
+```
+
+### Extending the Template
+
+To modify the template for all future packages, edit `scripts/create-package.sh`.
+
+## 🎨 Example Packages
+
+### Database Client
+```bash
+./scripts/create-package.sh postgres-client
+# Customize for PostgreSQL operations
+```
+
+### Message Queue
+```bash
+./scripts/create-package.sh kafka-client
+# Customize for Kafka producer/consumer
+```
+
+### HTTP Service
+```bash
+./scripts/create-package.sh http-client
+# Add retry logic, circuit breakers
+```
+
+## 💡 Best Practices
+
+1. **Keep Template Updated**: Regularly update the template with new patterns
+2. **Document Changes**: Update README after customization
+3. **Test First**: Write tests as you implement
+4. **Version Carefully**: Start with v0.1.0 for new packages
+5. **Review Generated Code**: Always review and cleanup generated code
+
+## 📊 Template Statistics
+
+- **Files Created**: 8 files
+- **Lines of Code**: ~500 lines
+- **Test Coverage**: Basic test structure included
+- **Documentation**: Full README with examples
+
+## 🔄 Updating the Template
+
+To update the template for future packages:
+
+1. Edit `scripts/create-package.sh`
+2. Test with a dummy package
+3. Commit your changes
+4. All future packages will use the new template
+
+## ⚠️ Important Notes
+
+- Package names should use kebab-case (redis-client, not redisclient)
+- The script converts kebab-case to Go package names automatically
+- Always review generated code before committing
+- Update TODOs with actual implementation
+
+## 🐛 Troubleshooting
+
+### "Package already exists"
+- Check if directory exists
+- Use a different name or remove existing directory
+
+### Script Permission Denied
+```bash
+chmod +x scripts/create-package.sh
+```
+
+### Module Path Issues
+- Ensure repository URL in template matches your repo
+- Update go.mod after creation if needed
+
+---
+
+Happy coding! 🚀
