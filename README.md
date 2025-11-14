@@ -345,7 +345,7 @@ Current packages available:
 |---------|-------------|----------------|---------|
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | v0.0.1	 | `go get github.com/isimtekin/go-packages/env-util` |
 | [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.0.1	 | `go get github.com/isimtekin/go-packages/mongo-client` |
-| [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.0.1	 | `go get github.com/isimtekin/go-packages/redis-client` |
+| [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.0.2 | `go get github.com/isimtekin/go-packages/redis-client@v0.0.2` |
 | [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2` |
 
 **env-util** features:

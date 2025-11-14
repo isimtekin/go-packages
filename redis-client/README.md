@@ -22,7 +22,7 @@ A high-level Redis client wrapper for Go with multi-database support, connection
 ## =� Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/redis-client
+go get github.com/isimtekin/go-packages/redis-client@v0.0.2
 ```
 
 ## =� Quick Start
