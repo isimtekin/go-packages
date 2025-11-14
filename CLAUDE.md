@@ -434,3 +434,4 @@ make list-versions
 # Format all code
 make fmt-all
 ```
+- to memorize

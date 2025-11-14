@@ -1,5 +1,5 @@
 .PHONY: help test test-verbose test-race test-coverage bench clean fmt lint vet tidy install-tools
-.PHONY: docker-up docker-down test-integration run-example
+.PHONY: docker-up docker-down test-integration
 
 # Default target
 .DEFAULT_GOAL := help
@@ -14,11 +14,11 @@ GOBUILD=$(GOCMD) build
 GOINSTALL=$(GOCMD) install
 
 # Package name
-PACKAGE=github.com/isimtekin/go-packages/redis-client
+PACKAGE=github.com/isimtekin/go-packages/nats-client
 
 ## help: Display this help message
 help:
-	@echo "redis-client Makefile"
+	@echo "nats-client Makefile"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make <target>"
@@ -96,9 +96,6 @@ bench-mem:
 fmt:
 	@echo "Formatting Go code..."
 	$(GOFMT) ./...
-	@if command -v goimports > /dev/null; then \
-		goimports -w .; \
-	fi
 	@echo "Code formatted successfully!"
 
 ## vet: Run go vet
@@ -198,30 +195,25 @@ stats:
 	@echo "Test coverage:"
 	@$(GOTEST) -cover ./... 2>&1 | grep "coverage:" | tail -1
 
-## docker-up: Start Redis in Docker
+## docker-up: Start NATS server in Docker
 docker-up:
-	@echo "Starting Redis in Docker..."
-	@docker run -d --name redis-test -p 6379:6379 redis:latest
-	@echo "Redis started on port 6379"
+	@echo "Starting NATS server in Docker..."
+	@docker run -d --name nats-test -p 4222:4222 -p 8222:8222 nats:latest
+	@echo "NATS server started on port 4222 (monitoring on port 8222)"
 
-## docker-down: Stop Redis in Docker
+## docker-down: Stop NATS server in Docker
 docker-down:
-	@echo "Stopping Redis in Docker..."
-	@docker stop redis-test || true
-	@docker rm redis-test || true
-	@echo "Redis stopped"
+	@echo "Stopping NATS server in Docker..."
+	@docker stop nats-test || true
+	@docker rm nats-test || true
+	@echo "NATS server stopped"
 
-## test-integration: Run integration tests (requires Redis)
+## test-integration: Run integration tests (requires NATS)
 test-integration: docker-up
 	@sleep 2
 	@echo "Running integration tests..."
 	@$(GOTEST) -v -race ./... || (make docker-down && exit 1)
 	@make docker-down
-
-## run-example: Run multi-db example (requires Redis)
-run-example:
-	@echo "Running multi-database example..."
-	@cd examples/multi-db && go run main.go
 
 ## version: Show Go version
 version:
