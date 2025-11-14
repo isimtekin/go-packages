@@ -14,6 +14,7 @@ This is a **Go packages monorepo** containing multiple independent, reusable Go 
 - `env-util`: Environment variable loading and configuration utilities
 - `mongo-client`: MongoDB client wrapper with auto-timestamps
 - `redis-client`: Redis client wrapper with multi-database support
+- `nats-client`: NATS messaging client with pub/sub and JetStream support
 
 ## Monorepo Structure
 

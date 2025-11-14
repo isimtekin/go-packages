@@ -45,7 +45,7 @@ Create a fully-featured package with one command:
 # Interactive creation
 make create-package
 # Enter package name: redis-client
-
+when 
 # Or direct script usage
 ./scripts/create-package.sh mongo-client
 
@@ -342,6 +342,8 @@ Current packages available:
 |---------|-------------|----------------|---------|
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | Not released yet | `go get github.com/isimtekin/go-packages/env-util` |
 | [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | Not released yet | `go get github.com/isimtekin/go-packages/mongo-client` |
+| [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | Not released yet | `go get github.com/isimtekin/go-packages/redis-client` |
+| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | Not released yet | `go get github.com/isimtekin/go-packages/nats-client` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -362,6 +364,26 @@ Current packages available:
 - 🎯 Mongoose-like BaseModel with timestamps
 - 🔧 Query and update builders
 - 📋 Pagination support
+
+**redis-client** features:
+- 🔧 All Redis data types (strings, hashes, lists, sets, sorted sets)
+- 🗄️ Multi-database support with singleton pattern
+- 🏷️ Config-based database naming for readability
+- 🔄 Connection pooling per database
+- 🔐 TLS/SSL support
+- 📊 Pipeline and transaction support
+- 🎯 Pub/Sub messaging
+- 🌐 Environment variable configuration
+
+**nats-client** features:
+- 📨 Publish/subscribe messaging patterns
+- 🔄 Request/reply RPC support
+- 👥 Queue groups for load balancing
+- 🚀 JetStream support for persistence
+- 🔒 TLS/SSL encryption
+- 🔐 Username/password and token authentication
+- 🔁 Automatic reconnection with backoff
+- 🌐 Environment variable configuration
 
 ## 🔄 Development Workflow
 
