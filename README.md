@@ -350,6 +350,7 @@ Current packages available:
 | [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1 | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1` |
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.0.1 | `go get github.com/isimtekin/go-packages/kafka-client@v0.0.1` |
 | [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1 | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1` |
+| [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | Not released yet | `go get github.com/isimtekin/go-packages/http-service` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -427,6 +428,19 @@ Current packages available:
 - 📎 Attachment support with fields and formatting
 - ✅ 81.8% test coverage with comprehensive tests
 - 🔒 Type-safe message structures
+
+**http-service** features:
+- 🚀 FastHTTP-powered for maximum performance
+- 📝 Automatic OpenAPI 3.0 spec generation + Swagger UI
+- ✅ Integrated request validation with go-playground/validator
+- 🎯 Type-safe handlers with generics support
+- 🔧 Built-in middleware (CORS, logging, recovery, rate limiting)
+- 🏗️ Builder pattern for service and route configuration
+- ⚡ Full context.Context integration for cancellation
+- 🔒 Production-ready with graceful shutdown and panic recovery
+- 📊 Built-in /health endpoint, optional /metrics
+- 🎨 FastAPI-inspired developer experience
+- 🔐 Authentication and authorization middleware support
 
 ## 🔄 Development Workflow
 

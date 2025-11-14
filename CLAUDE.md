@@ -18,6 +18,7 @@ This is a **Go packages monorepo** containing multiple independent, reusable Go 
 - `crypto-utils`: Comprehensive cryptography utilities (AES, RSA, ECDSA, ECDH, hashing, KDF)
 - `kafka-client`: Apache Kafka client with producer, consumer, and admin operations
 - `slack-notifier`: Slack webhook notifier with retry logic and Block Kit support
+- `http-service`: FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation
 
 ## Monorepo Structure
 
