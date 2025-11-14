@@ -340,9 +340,17 @@ Current packages available:
 
 | Package | Description | Latest Version | Install |
 |---------|-------------|----------------|---------|
-| - | No packages yet | - | - |
+| [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | Not released yet | `go get github.com/isimtekin/go-packages/env-util` |
 
-*This table will be updated as packages are added*
+**env-util** features:
+- 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
+- 🎯 Zero dependencies - pure Go stdlib
+- ⚙️ Functional options pattern with prefix support
+- 📁 .env file loading
+- ✅ Required variable validation
+- 🚀 Smart duration parsing with unit detection
+- 📋 Slice/list parsing from comma-separated values
+- 💾 Value caching for performance
 
 ## 🔄 Development Workflow
 
