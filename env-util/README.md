@@ -23,10 +23,10 @@ A comprehensive, zero-dependency Go package for managing environment variables w
 
 ```bash
 # Installation (after first release)
-go get github.com/isimtekin/go-packages/env-util
+go get github.com/isimtekin/go-packages/env-util@v0.0.2
 
 # For development/testing from local
-go get github.com/isimtekin/go-packages/env-util@latest
+go get github.com/isimtekin/go-packages/env-util@v0.0.2
 ```
 
 ## 📋 Implementation Guide for AI
