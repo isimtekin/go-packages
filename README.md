@@ -348,6 +348,7 @@ Current packages available:
 | [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.0.2 | `go get github.com/isimtekin/go-packages/redis-client@v0.0.2` |
 | [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2` |
 | [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1 | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1` |
+| [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | Not released yet | `go get github.com/isimtekin/go-packages/kafka-client` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -400,6 +401,18 @@ Current packages available:
 - 🔐 Secure password and PIN generation
 - 🆔 Short ID and secure token generation
 - 📦 Base64 encoding/decoding (standard and URL-safe)
+
+**kafka-client** features:
+- 📨 Producer with single and batch message sending
+- 📥 Consumer group support with automatic offset management
+- 🔧 Admin operations (create/delete/list topics, metadata)
+- 🔐 SASL authentication (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512)
+- 🔒 TLS/SSL encryption support
+- 📦 Multiple compression codecs (Snappy, GZIP, LZ4, Zstd)
+- 🎯 Partitioning strategies (hash, random, round-robin)
+- ⚡ Idempotent writes for exactly-once semantics
+- 🔄 Context-aware operations with timeout support
+- 🧵 Thread-safe for concurrent use
 
 ## 🔄 Development Workflow
 
