@@ -346,7 +346,7 @@ Current packages available:
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | Not released yet | `go get github.com/isimtekin/go-packages/env-util` |
 | [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | Not released yet | `go get github.com/isimtekin/go-packages/mongo-client` |
 | [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | Not released yet | `go get github.com/isimtekin/go-packages/redis-client` |
-| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | Not released yet | `go get github.com/isimtekin/go-packages/nats-client` |
+| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.1 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.1` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
