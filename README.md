@@ -341,6 +341,7 @@ Current packages available:
 | Package | Description | Latest Version | Install |
 |---------|-------------|----------------|---------|
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | Not released yet | `go get github.com/isimtekin/go-packages/env-util` |
+| [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | Not released yet | `go get github.com/isimtekin/go-packages/mongo-client` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -351,6 +352,16 @@ Current packages available:
 - 🚀 Smart duration parsing with unit detection
 - 📋 Slice/list parsing from comma-separated values
 - 💾 Value caching for performance
+
+**mongo-client** features:
+- 🚀 High-level CRUD operations with simple methods
+- 🔄 Transaction support with automatic rollback
+- ⚙️ Connection pooling and health checks
+- ⏱️ Context management with automatic timeouts
+- 📊 Aggregation pipeline helpers
+- 🎯 Mongoose-like BaseModel with timestamps
+- 🔧 Query and update builders
+- 📋 Pagination support
 
 ## 🔄 Development Workflow
 
