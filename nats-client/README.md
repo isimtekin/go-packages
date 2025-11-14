@@ -20,7 +20,7 @@ A high-level NATS client wrapper for Go with clean API, automatic reconnection, 
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/nats-client@v0.0.1
+go get github.com/isimtekin/go-packages/nats-client@v0.0.2
 ```
 
 ## Quick Start
