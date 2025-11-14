@@ -349,6 +349,7 @@ Current packages available:
 | [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2` |
 | [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1 | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1` |
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.0.1 | `go get github.com/isimtekin/go-packages/kafka-client@v0.0.1` |
+| [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | Not released yet | `go get github.com/isimtekin/go-packages/slack-notifier` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -413,6 +414,19 @@ Current packages available:
 - ⚡ Idempotent writes for exactly-once semantics
 - 🔄 Context-aware operations with timeout support
 - 🧵 Thread-safe for concurrent use
+
+**slack-notifier** features:
+- 📨 Simple webhook-based Slack notifications
+- 🎨 Color-coded messages (success, warning, error, info)
+- 🏗️ Message builder pattern for fluent API
+- 🧱 Block Kit support for rich, interactive messages
+- 🔄 Automatic retry logic with exponential backoff
+- ⏱️ Context-aware operations with timeout support
+- 🧵 Thread support for organized conversations
+- ⚙️ Customizable username, icon, and channel
+- 📎 Attachment support with fields and formatting
+- ✅ 81.8% test coverage with comprehensive tests
+- 🔒 Type-safe message structures
 
 ## 🔄 Development Workflow
 
