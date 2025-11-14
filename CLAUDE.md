@@ -108,6 +108,16 @@ make release PACKAGE=package-name VERSION=1.2.3
 make bump PACKAGE=package-name TYPE=patch
 ```
 
+**The release script automatically:**
+1. Runs tests for the package
+2. Updates package README.md with new version in installation commands
+3. Updates root README.md package table with new version
+4. Commits these README changes
+5. Creates and pushes git tag
+6. Triggers GitHub Actions for release notes
+
+This ensures all documentation stays in sync with releases.
+
 ### Monorepo Commands
 
 ```bash

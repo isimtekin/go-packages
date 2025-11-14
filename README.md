@@ -147,6 +147,9 @@ Validates, tests, and releases a package with a specific version.
 - Checks if package directory exists
 - Verifies tag doesn't already exist
 - Runs package tests
+- Updates package README.md with new version
+- Updates root README.md package table with new version
+- Commits README changes
 - Creates Git tag with format `package-name/vX.Y.Z`
 - Pushes tag to GitHub
 - Shows installation command for users
