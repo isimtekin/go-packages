@@ -347,6 +347,7 @@ Current packages available:
 | [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.0.2 | `go get github.com/isimtekin/go-packages/mongo-client@v0.0.2` |
 | [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.0.2 | `go get github.com/isimtekin/go-packages/redis-client@v0.0.2` |
 | [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2` |
+| [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | Not released yet | `go get github.com/isimtekin/go-packages/crypto-utils` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -387,6 +388,18 @@ Current packages available:
 - 🔐 Username/password and token authentication
 - 🔁 Automatic reconnection with backoff
 - 🌐 Environment variable configuration
+
+**crypto-utils** features:
+- 🔐 AES-GCM and AES-CBC encryption (128/192/256-bit)
+- 🔑 RSA key generation, OAEP encryption, PSS signing
+- ✍️ ECDSA signing/verification (P-256/P-384/P-521)
+- 🤝 ECDH key exchange (X25519, P-256, P-384, P-521)
+- 🔨 SHA-256/384/512 hashing and HMAC-SHA256/512
+- 🛡️ PBKDF2 key derivation (SHA-256/SHA-512)
+- 🎲 Cryptographically secure random generation
+- 🔐 Secure password and PIN generation
+- 🆔 Short ID and secure token generation
+- 📦 Base64 encoding/decoding (standard and URL-safe)
 
 ## 🔄 Development Workflow
 

@@ -15,6 +15,7 @@ This is a **Go packages monorepo** containing multiple independent, reusable Go 
 - `mongo-client`: MongoDB client wrapper with auto-timestamps
 - `redis-client`: Redis client wrapper with multi-database support
 - `nats-client`: NATS messaging client with pub/sub and JetStream support
+- `crypto-utils`: Comprehensive cryptography utilities (AES, RSA, ECDSA, ECDH, hashing, KDF)
 
 ## Monorepo Structure
 
