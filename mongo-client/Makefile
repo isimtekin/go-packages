@@ -42,9 +42,16 @@ clean:
 	rm -f coverage.out coverage.html
 	go clean -cache
 
-# Run example (requires MongoDB running)
+# Run examples (requires MongoDB running)
 run-example:
-	@cd examples && go run main.go
+	@echo "Running basic example..."
+	@cd examples/basic && go run main.go
+
+run-env-example:
+	@echo "Running environment configuration example..."
+	@cd examples/env-config && go run main.go
+
+run-all-examples: run-env-example run-example
 
 # Install dependencies
 deps:

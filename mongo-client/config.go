@@ -8,19 +8,19 @@ import (
 // Config holds MongoDB client configuration
 type Config struct {
 	// Connection settings
-	URI      string        // MongoDB connection URI
-	Database string        // Database name
+	URI      string // MongoDB connection URI
+	Database string // Database name
 
 	// Connection pool settings
-	MaxPoolSize uint64        // Maximum number of connections in the pool
-	MinPoolSize uint64        // Minimum number of connections in the pool
+	MaxPoolSize     uint64        // Maximum number of connections in the pool
+	MinPoolSize     uint64        // Minimum number of connections in the pool
 	MaxConnIdleTime time.Duration // Maximum time a connection can be idle
 
 	// Timeout settings
-	ConnectTimeout          time.Duration // Timeout for initial connection
-	SocketTimeout           time.Duration // Timeout for socket operations
-	ServerSelectionTimeout  time.Duration // Timeout for server selection
-	OperationTimeout        time.Duration // Default timeout for operations
+	ConnectTimeout         time.Duration // Timeout for initial connection
+	SocketTimeout          time.Duration // Timeout for socket operations
+	ServerSelectionTimeout time.Duration // Timeout for server selection
+	OperationTimeout       time.Duration // Default timeout for operations
 
 	// Retry settings
 	RetryWrites bool // Enable retry writes

@@ -601,15 +601,24 @@ arr := mongoclient.A{"val1", "val2"}            // bson.A
 
 ## 📚 Complete Examples
 
-See [examples/main.go](./examples/main.go) for comprehensive examples including:
+See [examples/](./examples/) directory for comprehensive examples:
+
+**[Basic Example](./examples/basic/main.go)** - Complete feature demonstration:
 - Creating and configuring clients
-- CRUD operations
-- Advanced queries
+- CRUD operations with auto-timestamps
+- Advanced queries and operators
 - Aggregation pipelines
 - Transactions
 - Pagination
 - Health checks
 - Index management
+
+**[Environment Config Example](./examples/env-config/main.go)** - Configuration patterns:
+- Using environment variables
+- Custom prefixes
+- Building URI from components
+- .env file loading
+- Deployment scenarios
 
 ## 🧪 Testing
 
@@ -655,7 +664,9 @@ MIT License - See LICENSE file for details.
 - [Package Directory](https://github.com/isimtekin/go-packages/tree/main/mongo-client)
 - [MongoDB Go Driver Docs](https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo)
 - [Report Issues](https://github.com/isimtekin/go-packages/issues)
-- [Example Code](./examples/main.go)
+- [Basic Example](./examples/basic/main.go)
+- [Environment Config Example](./examples/env-config/main.go)
+- [Examples README](./examples/README.md)
 
 ## 🙏 Acknowledgments
 
