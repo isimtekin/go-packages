@@ -17,7 +17,7 @@ A robust, idiomatic Go client library for Apache Kafka with producer and consume
 ## Installation
 
 \`\`\`bash
-go get github.com/isimtekin/go-packages/kafka-client@v0.0.1
+go get github.com/isimtekin/go-packages/kafka-client@v0.1.0
 \`\`\`
 
 ## Quick Start
