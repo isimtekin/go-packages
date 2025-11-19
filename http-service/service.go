@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/valyala/fasthttp"
@@ -116,6 +117,16 @@ func (s *Service) handler(ctx *fasthttp.RequestCtx) {
 	method := string(ctx.Method())
 	path := string(ctx.Path())
 
+	// Handle CORS preflight requests (OPTIONS) when CORS is enabled
+	if method == "OPTIONS" && s.config.EnableCORS {
+		// Check if there's any route for this path (regardless of method)
+		if s.hasRouteForPath(path) {
+			// Handle preflight request
+			s.handlePreflightRequest(ctx)
+			return
+		}
+	}
+
 	route := s.findRoute(method, path)
 	if route == nil {
 		ctx.SetStatusCode(fasthttp.StatusNotFound)
@@ -160,6 +171,51 @@ func (s *Service) findRoute(method, path string) *Route {
 		}
 	}
 	return nil
+}
+
+// hasRouteForPath checks if there's any route (regardless of method) for the given path
+func (s *Service) hasRouteForPath(path string) bool {
+	for _, route := range s.routes {
+		// Simple exact match for now
+		if route.Path == path {
+			return true
+		}
+
+		// Check if path matches pattern
+		if _, err := ParsePathParams(route.Path, path); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// handlePreflightRequest handles CORS preflight OPTIONS requests
+func (s *Service) handlePreflightRequest(ctx *fasthttp.RequestCtx) {
+	// Set CORS headers
+	origin := string(ctx.Request.Header.Peek("Origin"))
+	if origin != "" && isAllowedOrigin(origin, s.config.CORSAllowOrigins) {
+		ctx.Response.Header.Set("Access-Control-Allow-Origin", origin)
+	} else if len(s.config.CORSAllowOrigins) > 0 && s.config.CORSAllowOrigins[0] == "*" {
+		ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
+	}
+
+	ctx.Response.Header.Set("Access-Control-Allow-Methods", strings.Join(s.config.CORSAllowMethods, ", "))
+	ctx.Response.Header.Set("Access-Control-Allow-Headers", strings.Join(s.config.CORSAllowHeaders, ", "))
+
+	if len(s.config.CORSExposeHeaders) > 0 {
+		ctx.Response.Header.Set("Access-Control-Expose-Headers", strings.Join(s.config.CORSExposeHeaders, ", "))
+	}
+
+	if s.config.CORSAllowCredentials {
+		ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
+	}
+
+	if s.config.CORSMaxAge > 0 {
+		ctx.Response.Header.Set("Access-Control-Max-Age", fmt.Sprintf("%d", s.config.CORSMaxAge))
+	}
+
+	// Return 204 No Content for preflight
+	ctx.SetStatusCode(fasthttp.StatusNoContent)
 }
 
 // Use adds global middleware
