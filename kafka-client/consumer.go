@@ -141,6 +141,9 @@ func NewConsumer(config *Config, handler MessageHandler) (*Consumer, error) {
 func (c *Consumer) consume() {
 	defer c.wg.Done()
 
+	// Apply workspace prefix to topics if configured
+	topics := c.config.ApplyWorkspacePrefixToTopics(c.config.Consumer.Topics)
+
 	for {
 		// Check if context is cancelled
 		select {
@@ -150,7 +153,7 @@ func (c *Consumer) consume() {
 		}
 
 		// Consume messages
-		if err := c.consumerGroup.Consume(c.ctx, c.config.Consumer.Topics, c.handler); err != nil {
+		if err := c.consumerGroup.Consume(c.ctx, topics, c.handler); err != nil {
 			// Log error or handle it appropriately
 			// For now, we'll just continue
 			select {

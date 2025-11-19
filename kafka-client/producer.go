@@ -61,9 +61,12 @@ func (p *Producer) SendMessage(ctx context.Context, msg *Message) (partition int
 		return 0, 0, ErrInvalidTopic
 	}
 
+	// Apply workspace prefix to topic if configured
+	topic := p.config.ApplyWorkspacePrefix(msg.Topic)
+
 	// Build Sarama producer message
 	producerMsg := &sarama.ProducerMessage{
-		Topic: msg.Topic,
+		Topic: topic,
 		Value: sarama.ByteEncoder(msg.Value),
 	}
 
@@ -127,8 +130,11 @@ func (p *Producer) SendMessages(ctx context.Context, messages []*Message) error 
 			return ErrInvalidTopic
 		}
 
+		// Apply workspace prefix to topic if configured
+		topic := p.config.ApplyWorkspacePrefix(msg.Topic)
+
 		producerMsg := &sarama.ProducerMessage{
-			Topic: msg.Topic,
+			Topic: topic,
 			Value: sarama.ByteEncoder(msg.Value),
 		}
 

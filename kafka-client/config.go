@@ -18,6 +18,12 @@ type Config struct {
 	// ClientID is the client identifier sent to Kafka
 	ClientID string
 
+	// Workspace is an optional prefix for all topics
+	// If set, all topics will be prefixed with "{workspace}."
+	// Example: workspace="production" => topic="orders" becomes "production.orders"
+	// This is useful for multi-tenancy or environment separation
+	Workspace string
+
 	// Consumer configuration
 	Consumer ConsumerConfig
 
@@ -268,4 +274,25 @@ func (c *Config) ToSaramaConfig() (*sarama.Config, error) {
 	config.Net.WriteTimeout = c.Timeout
 
 	return config, nil
+}
+
+// ApplyWorkspacePrefix applies the workspace prefix to a topic name if workspace is configured
+func (c *Config) ApplyWorkspacePrefix(topic string) string {
+	if c.Workspace == "" || topic == "" {
+		return topic
+	}
+	return fmt.Sprintf("%s.%s", c.Workspace, topic)
+}
+
+// ApplyWorkspacePrefixToTopics applies the workspace prefix to multiple topic names
+func (c *Config) ApplyWorkspacePrefixToTopics(topics []string) []string {
+	if c.Workspace == "" {
+		return topics
+	}
+
+	prefixedTopics := make([]string, len(topics))
+	for i, topic := range topics {
+		prefixedTopics[i] = c.ApplyWorkspacePrefix(topic)
+	}
+	return prefixedTopics
 }

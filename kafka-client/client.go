@@ -173,12 +173,15 @@ func (c *Client) CreateTopic(ctx context.Context, topic string, numPartitions in
 		return ErrClientClosed
 	}
 
+	// Apply workspace prefix to topic if configured
+	topicWithPrefix := c.config.ApplyWorkspacePrefix(topic)
+
 	topicDetail := &sarama.TopicDetail{
 		NumPartitions:     numPartitions,
 		ReplicationFactor: replicationFactor,
 	}
 
-	err := c.admin.CreateTopic(topic, topicDetail, false)
+	err := c.admin.CreateTopic(topicWithPrefix, topicDetail, false)
 	if err != nil {
 		return fmt.Errorf("failed to create topic: %w", err)
 	}
@@ -195,7 +198,10 @@ func (c *Client) DeleteTopic(ctx context.Context, topic string) error {
 		return ErrClientClosed
 	}
 
-	err := c.admin.DeleteTopic(topic)
+	// Apply workspace prefix to topic if configured
+	topicWithPrefix := c.config.ApplyWorkspacePrefix(topic)
+
+	err := c.admin.DeleteTopic(topicWithPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to delete topic: %w", err)
 	}
@@ -212,13 +218,16 @@ func (c *Client) GetTopicMetadata(ctx context.Context, topic string) (*sarama.To
 		return nil, ErrClientClosed
 	}
 
-	topics, err := c.admin.DescribeTopics([]string{topic})
+	// Apply workspace prefix to topic if configured
+	topicWithPrefix := c.config.ApplyWorkspacePrefix(topic)
+
+	topics, err := c.admin.DescribeTopics([]string{topicWithPrefix})
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe topic: %w", err)
 	}
 
 	if len(topics) == 0 {
-		return nil, fmt.Errorf("topic %s not found", topic)
+		return nil, fmt.Errorf("topic %s not found", topicWithPrefix)
 	}
 
 	return topics[0], nil

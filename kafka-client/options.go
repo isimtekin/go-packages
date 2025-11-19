@@ -26,6 +26,15 @@ func WithClientID(clientID string) Option {
 	}
 }
 
+// WithWorkspace sets the workspace prefix for all topics
+// When set, all topics will be prefixed with "{workspace}."
+// Example: workspace="production" => topic="orders" becomes "production.orders"
+func WithWorkspace(workspace string) Option {
+	return func(c *Config) {
+		c.Workspace = workspace
+	}
+}
+
 // WithConsumerGroup sets the consumer group ID
 func WithConsumerGroup(groupID string) Option {
 	return func(c *Config) {
