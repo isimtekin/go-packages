@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/isimtekin/go-packages/env-util v1.0.0
+	github.com/isimtekin/go-packages/env-util v0.0.2
 	github.com/sendgrid/sendgrid-go v3.14.0+incompatible
 	github.com/stretchr/testify v1.11.1
 )
