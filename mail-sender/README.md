@@ -27,7 +27,7 @@ A simple and flexible email sending library for Go with support for multiple ema
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/mail-sender@v0.1.0
+go get github.com/isimtekin/go-packages/mail-sender@v0.1.1
 ```
 
 ## Quick Start
