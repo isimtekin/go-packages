@@ -1,0 +1,892 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>mail-sender: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/isimtekin/go-packages/mail-sender/async.go (86.7%)</option>
+				
+				<option value="file1">github.com/isimtekin/go-packages/mail-sender/async_options.go (100.0%)</option>
+				
+				<option value="file2">github.com/isimtekin/go-packages/mail-sender/config.go (100.0%)</option>
+				
+				<option value="file3">github.com/isimtekin/go-packages/mail-sender/env.go (94.1%)</option>
+				
+				<option value="file4">github.com/isimtekin/go-packages/mail-sender/options.go (100.0%)</option>
+				
+				<option value="file5">github.com/isimtekin/go-packages/mail-sender/sender.go (100.0%)</option>
+				
+				<option value="file6">github.com/isimtekin/go-packages/mail-sender/sendgrid.go (68.2%)</option>
+				
+				<option value="file7">github.com/isimtekin/go-packages/mail-sender/template.go (85.7%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package mailsender
+
+import (
+        "context"
+        "fmt"
+        "sync"
+        "sync/atomic"
+        "time"
+)
+
+// EventHandlers contains callback functions for email sending events.
+type EventHandlers struct {
+        // OnSuccess is called when an email is sent successfully.
+        OnSuccess func(message *EmailMessage)
+
+        // OnFailure is called when an email fails to send.
+        OnFailure func(message *EmailMessage, err error)
+
+        // OnRetry is called when an email send is being retried.
+        OnRetry func(message *EmailMessage, attempt int, err error)
+}
+
+// AsyncConfig holds configuration for the async sender.
+type AsyncConfig struct {
+        // Workers is the number of concurrent workers sending emails.
+        Workers int
+
+        // QueueSize is the size of the email queue buffer.
+        QueueSize int
+
+        // EventHandlers contains event callback functions.
+        EventHandlers *EventHandlers
+
+        // RetryAttempts is the number of retry attempts for failed sends (0 = no retry).
+        RetryAttempts int
+
+        // RetryDelay is the delay between retry attempts.
+        RetryDelay time.Duration
+}
+
+// AsyncSender wraps an EmailSender to provide non-blocking, event-based email sending.
+type AsyncSender struct {
+        sender    EmailSender
+        config    *AsyncConfig
+        queue     chan *emailTask
+        wg        sync.WaitGroup
+        ctx       context.Context
+        cancel    context.CancelFunc
+        closed    atomic.Bool
+        stats     *AsyncStats
+        startOnce sync.Once
+}
+
+// AsyncStats holds statistics about the async sender.
+type AsyncStats struct {
+        sent    atomic.Int64
+        failed  atomic.Int64
+        pending atomic.Int64
+        retried atomic.Int64
+}
+
+// emailTask represents an email to be sent with its context.
+type emailTask struct {
+        ctx     context.Context
+        message *EmailMessage
+        attempt int
+}
+
+// NewAsyncSender creates a new async email sender.
+func NewAsyncSender(sender EmailSender, opts ...AsyncOption) *AsyncSender <span class="cov8" title="1">{
+        config := defaultAsyncConfig()
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(config)
+        }</span>
+
+        <span class="cov8" title="1">ctx, cancel := context.WithCancel(context.Background())
+
+        as := &amp;AsyncSender{
+                sender: sender,
+                config: config,
+                queue:  make(chan *emailTask, config.QueueSize),
+                ctx:    ctx,
+                cancel: cancel,
+                stats:  &amp;AsyncStats{},
+        }
+
+        return as</span>
+}
+
+// Start starts the worker pool. This is called automatically on first SendAsync.
+func (as *AsyncSender) Start() <span class="cov8" title="1">{
+        as.startOnce.Do(func() </span><span class="cov8" title="1">{
+                for i := 0; i &lt; as.config.Workers; i++ </span><span class="cov8" title="1">{
+                        as.wg.Add(1)
+                        go as.worker(i)
+                }</span>
+        })
+}
+
+// worker processes email tasks from the queue.
+func (as *AsyncSender) worker(id int) <span class="cov8" title="1">{
+        defer as.wg.Done()
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case &lt;-as.ctx.Done():<span class="cov8" title="1">
+                        return</span>
+                case task, ok := &lt;-as.queue:<span class="cov8" title="1">
+                        if !ok </span><span class="cov8" title="1">{
+                                return
+                        }</span>
+                        <span class="cov8" title="1">as.processTask(task)</span>
+                }
+        }
+}
+
+// processTask sends an email and handles retries and events.
+func (as *AsyncSender) processTask(task *emailTask) <span class="cov8" title="1">{
+        as.stats.pending.Add(-1)
+
+        err := as.sender.Send(task.ctx, task.message)
+
+        if err != nil </span><span class="cov8" title="1">{
+                // Check if we should retry
+                if as.config.RetryAttempts &gt; 0 &amp;&amp; task.attempt &lt; as.config.RetryAttempts </span><span class="cov8" title="1">{
+                        task.attempt++
+                        as.stats.retried.Add(1)
+
+                        // Call OnRetry handler
+                        if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnRetry != nil </span><span class="cov8" title="1">{
+                                as.config.EventHandlers.OnRetry(task.message, task.attempt, err)
+                        }</span>
+
+                        // Wait before retry
+                        <span class="cov8" title="1">if as.config.RetryDelay &gt; 0 </span><span class="cov8" title="1">{
+                                select </span>{
+                                case &lt;-time.After(as.config.RetryDelay):<span class="cov8" title="1"></span>
+                                case &lt;-as.ctx.Done():<span class="cov0" title="0">
+                                        as.stats.failed.Add(1)
+                                        if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnFailure != nil </span><span class="cov0" title="0">{
+                                                as.config.EventHandlers.OnFailure(task.message, err)
+                                        }</span>
+                                        <span class="cov0" title="0">return</span>
+                                }
+                        }
+
+                        // Re-queue for retry
+                        // Check if sender is closed before re-queueing
+                        <span class="cov8" title="1">if as.closed.Load() </span><span class="cov8" title="1">{
+                                as.stats.failed.Add(1)
+                                if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnFailure != nil </span><span class="cov8" title="1">{
+                                        as.config.EventHandlers.OnFailure(task.message, err)
+                                }</span>
+                                <span class="cov8" title="1">return</span>
+                        }
+
+                        <span class="cov8" title="1">as.stats.pending.Add(1)
+                        select </span>{
+                        case as.queue &lt;- task:<span class="cov8" title="1"></span>
+                        case &lt;-as.ctx.Done():<span class="cov0" title="0">
+                                as.stats.pending.Add(-1)
+                                as.stats.failed.Add(1)
+                                if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnFailure != nil </span><span class="cov0" title="0">{
+                                        as.config.EventHandlers.OnFailure(task.message, err)
+                                }</span>
+                        }
+                        <span class="cov8" title="1">return</span>
+                }
+
+                // Failed after all retries
+                <span class="cov8" title="1">as.stats.failed.Add(1)
+                if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnFailure != nil </span><span class="cov8" title="1">{
+                        as.config.EventHandlers.OnFailure(task.message, err)
+                }</span>
+                <span class="cov8" title="1">return</span>
+        }
+
+        // Success
+        <span class="cov8" title="1">as.stats.sent.Add(1)
+        if as.config.EventHandlers != nil &amp;&amp; as.config.EventHandlers.OnSuccess != nil </span><span class="cov8" title="1">{
+                as.config.EventHandlers.OnSuccess(task.message)
+        }</span>
+}
+
+// SendAsync queues an email for asynchronous sending.
+// Returns an error only if the sender is closed or the queue is full (non-blocking).
+func (as *AsyncSender) SendAsync(ctx context.Context, message *EmailMessage) error <span class="cov8" title="1">{
+        if as.closed.Load() </span><span class="cov8" title="1">{
+                return fmt.Errorf("async sender is closed")
+        }</span>
+
+        // Start workers on first send
+        <span class="cov8" title="1">as.Start()
+
+        task := &amp;emailTask{
+                ctx:     ctx,
+                message: message,
+                attempt: 0,
+        }
+
+        as.stats.pending.Add(1)
+
+        select </span>{
+        case as.queue &lt;- task:<span class="cov8" title="1">
+                return nil</span>
+        default:<span class="cov8" title="1">
+                as.stats.pending.Add(-1)
+                return fmt.Errorf("queue is full")</span>
+        }
+}
+
+// SendAsyncBlocking queues an email for asynchronous sending, blocking if queue is full.
+func (as *AsyncSender) SendAsyncBlocking(ctx context.Context, message *EmailMessage) error <span class="cov8" title="1">{
+        if as.closed.Load() </span><span class="cov0" title="0">{
+                return fmt.Errorf("async sender is closed")
+        }</span>
+
+        // Start workers on first send
+        <span class="cov8" title="1">as.Start()
+
+        task := &amp;emailTask{
+                ctx:     ctx,
+                message: message,
+                attempt: 0,
+        }
+
+        as.stats.pending.Add(1)
+
+        select </span>{
+        case as.queue &lt;- task:<span class="cov8" title="1">
+                return nil</span>
+        case &lt;-ctx.Done():<span class="cov8" title="1">
+                as.stats.pending.Add(-1)
+                return ctx.Err()</span>
+        case &lt;-as.ctx.Done():<span class="cov0" title="0">
+                as.stats.pending.Add(-1)
+                return fmt.Errorf("async sender is closed")</span>
+        }
+}
+
+// Close gracefully shuts down the async sender, waiting for all queued emails to be sent.
+func (as *AsyncSender) Close() error <span class="cov8" title="1">{
+        if !as.closed.CompareAndSwap(false, true) </span><span class="cov8" title="1">{
+                return nil // Already closed
+        }</span>
+
+        // Close the queue to prevent new items
+        <span class="cov8" title="1">close(as.queue)
+
+        // Wait for all workers to finish
+        as.wg.Wait()
+
+        // Cancel context
+        as.cancel()
+
+        // Close the underlying sender
+        return as.sender.Close()</span>
+}
+
+// CloseWithTimeout closes the async sender with a timeout.
+// If the timeout is reached, it force-closes and returns the remaining pending count.
+func (as *AsyncSender) CloseWithTimeout(timeout time.Duration) error <span class="cov8" title="1">{
+        if !as.closed.CompareAndSwap(false, true) </span><span class="cov0" title="0">{
+                return nil // Already closed
+        }</span>
+
+        // Close the queue to prevent new items
+        <span class="cov8" title="1">close(as.queue)
+
+        // Wait for workers with timeout
+        done := make(chan struct{})
+        go func() </span><span class="cov8" title="1">{
+                as.wg.Wait()
+                close(done)
+        }</span>()
+
+        <span class="cov8" title="1">select </span>{
+        case &lt;-done:<span class="cov8" title="1"></span>
+                // All workers finished
+        case &lt;-time.After(timeout):<span class="cov8" title="1">
+                // Timeout reached, force close
+                as.cancel()
+                return fmt.Errorf("close timeout reached, %d emails may not be sent", as.stats.pending.Load())</span>
+        }
+
+        <span class="cov8" title="1">as.cancel()
+        return as.sender.Close()</span>
+}
+
+// Stats returns the current statistics of the async sender.
+func (as *AsyncSender) Stats() AsyncStatsSnapshot <span class="cov8" title="1">{
+        return AsyncStatsSnapshot{
+                Sent:    as.stats.sent.Load(),
+                Failed:  as.stats.failed.Load(),
+                Pending: as.stats.pending.Load(),
+                Retried: as.stats.retried.Load(),
+        }
+}</span>
+
+// AsyncStatsSnapshot represents a snapshot of async sender statistics.
+type AsyncStatsSnapshot struct {
+        Sent    int64
+        Failed  int64
+        Pending int64
+        Retried int64
+}
+
+// defaultAsyncConfig returns the default async configuration.
+func defaultAsyncConfig() *AsyncConfig <span class="cov8" title="1">{
+        return &amp;AsyncConfig{
+                Workers:       3,
+                QueueSize:     100,
+                RetryAttempts: 0,
+                RetryDelay:    time.Second,
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package mailsender
+
+import "time"
+
+// AsyncOption is a function that modifies the AsyncConfig.
+type AsyncOption func(*AsyncConfig)
+
+// WithWorkers sets the number of concurrent workers.
+func WithWorkers(workers int) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                if workers &gt; 0 </span><span class="cov8" title="1">{
+                        c.Workers = workers
+                }</span>
+        }
+}
+
+// WithQueueSize sets the size of the email queue buffer.
+func WithQueueSize(size int) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                if size &gt; 0 </span><span class="cov8" title="1">{
+                        c.QueueSize = size
+                }</span>
+        }
+}
+
+// WithEventHandlers sets the event handlers for the async sender.
+func WithEventHandlers(handlers *EventHandlers) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                c.EventHandlers = handlers
+        }</span>
+}
+
+// WithRetry sets the retry configuration.
+func WithRetry(attempts int, delay time.Duration) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                c.RetryAttempts = attempts
+                c.RetryDelay = delay
+        }</span>
+}
+
+// WithOnSuccess sets the OnSuccess event handler.
+func WithOnSuccess(handler func(*EmailMessage)) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                if c.EventHandlers == nil </span><span class="cov8" title="1">{
+                        c.EventHandlers = &amp;EventHandlers{}
+                }</span>
+                <span class="cov8" title="1">c.EventHandlers.OnSuccess = handler</span>
+        }
+}
+
+// WithOnFailure sets the OnFailure event handler.
+func WithOnFailure(handler func(*EmailMessage, error)) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                if c.EventHandlers == nil </span><span class="cov8" title="1">{
+                        c.EventHandlers = &amp;EventHandlers{}
+                }</span>
+                <span class="cov8" title="1">c.EventHandlers.OnFailure = handler</span>
+        }
+}
+
+// WithOnRetry sets the OnRetry event handler.
+func WithOnRetry(handler func(*EmailMessage, int, error)) AsyncOption <span class="cov8" title="1">{
+        return func(c *AsyncConfig) </span><span class="cov8" title="1">{
+                if c.EventHandlers == nil </span><span class="cov8" title="1">{
+                        c.EventHandlers = &amp;EventHandlers{}
+                }</span>
+                <span class="cov8" title="1">c.EventHandlers.OnRetry = handler</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package mailsender
+
+import "fmt"
+
+// Provider represents the email service provider type.
+type Provider string
+
+const (
+        // ProviderSendGrid represents the SendGrid email service.
+        ProviderSendGrid Provider = "sendgrid"
+)
+
+// Config holds the configuration for the email sender.
+type Config struct {
+        // Provider specifies which email service provider to use.
+        Provider Provider
+
+        // APIKey is the API key for the email service provider.
+        APIKey string
+
+        // DefaultFrom is the default sender email address.
+        // If set, it will be used when EmailMessage.From is empty.
+        DefaultFrom string
+
+        // DefaultFromName is the default sender name.
+        // If set, it will be used when EmailMessage.FromName is empty.
+        DefaultFromName string
+}
+
+// Validate validates the configuration.
+func (c *Config) Validate() error <span class="cov8" title="1">{
+        if c.Provider == "" </span><span class="cov8" title="1">{
+                return ErrInvalidProvider
+        }</span>
+
+        <span class="cov8" title="1">if c.Provider != ProviderSendGrid </span><span class="cov8" title="1">{
+                return fmt.Errorf("%w: %s", ErrInvalidProvider, c.Provider)
+        }</span>
+
+        <span class="cov8" title="1">if c.APIKey == "" </span><span class="cov8" title="1">{
+                return ErrMissingAPIKey
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// DefaultConfig returns a new Config with default values.
+func DefaultConfig() *Config <span class="cov8" title="1">{
+        return &amp;Config{
+                Provider: ProviderSendGrid,
+        }
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package mailsender
+
+import (
+        envutil "github.com/isimtekin/go-packages/env-util"
+)
+
+// NewFromEnv creates a new email sender from environment variables with the specified prefix.
+// Environment variables:
+//   - &lt;PREFIX&gt;PROVIDER: Email service provider (default: "sendgrid")
+//   - &lt;PREFIX&gt;API_KEY: API key for the email service provider (required)
+//   - &lt;PREFIX&gt;DEFAULT_FROM: Default sender email address (optional)
+//   - &lt;PREFIX&gt;DEFAULT_FROM_NAME: Default sender name (optional)
+func NewFromEnv(prefix string) (EmailSender, error) <span class="cov8" title="1">{
+        env := envutil.NewWithOptions(
+                envutil.WithPrefix(prefix),
+        )
+
+        config := DefaultConfig()
+
+        // Load provider
+        providerStr := env.GetString("PROVIDER", string(ProviderSendGrid))
+        config.Provider = Provider(providerStr)
+
+        // Load API key (required)
+        config.APIKey = env.GetString("API_KEY", "")
+
+        // Load defaults
+        config.DefaultFrom = env.GetString("DEFAULT_FROM", "")
+        config.DefaultFromName = env.GetString("DEFAULT_FROM_NAME", "")
+
+        // Create sender based on provider
+        switch config.Provider </span>{
+        case ProviderSendGrid:<span class="cov8" title="1">
+                return NewSendGrid(config)</span>
+        default:<span class="cov8" title="1">
+                return nil, ErrInvalidProvider</span>
+        }
+}
+
+// NewSendGridFromEnv creates a new SendGrid sender from environment variables with default prefix "SENDGRID_".
+// Environment variables:
+//   - SENDGRID_API_KEY: SendGrid API key (required)
+//   - SENDGRID_DEFAULT_FROM: Default sender email address (optional)
+//   - SENDGRID_DEFAULT_FROM_NAME: Default sender name (optional)
+func NewSendGridFromEnv() (*SendGridSender, error) <span class="cov8" title="1">{
+        sender, err := NewFromEnv("SENDGRID_")
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        // Type assert to SendGridSender
+        <span class="cov8" title="1">sgSender, ok := sender.(*SendGridSender)
+        if !ok </span><span class="cov0" title="0">{
+                return nil, ErrInvalidProvider
+        }</span>
+
+        <span class="cov8" title="1">return sgSender, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package mailsender
+
+// Option is a function that modifies the Config.
+type Option func(*Config)
+
+// WithProvider sets the email service provider.
+func WithProvider(provider Provider) Option <span class="cov8" title="1">{
+        return func(c *Config) </span><span class="cov8" title="1">{
+                c.Provider = provider
+        }</span>
+}
+
+// WithAPIKey sets the API key for the email service provider.
+func WithAPIKey(apiKey string) Option <span class="cov8" title="1">{
+        return func(c *Config) </span><span class="cov8" title="1">{
+                c.APIKey = apiKey
+        }</span>
+}
+
+// WithDefaultFrom sets the default sender email address.
+func WithDefaultFrom(from string) Option <span class="cov8" title="1">{
+        return func(c *Config) </span><span class="cov8" title="1">{
+                c.DefaultFrom = from
+        }</span>
+}
+
+// WithDefaultFromName sets the default sender name.
+func WithDefaultFromName(fromName string) Option <span class="cov8" title="1">{
+        return func(c *Config) </span><span class="cov8" title="1">{
+                c.DefaultFromName = fromName
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package mailsender
+
+import (
+        "context"
+)
+
+// EmailSender defines the interface that all email providers must implement.
+type EmailSender interface {
+        // Send sends an email message using the configured provider.
+        Send(ctx context.Context, message *EmailMessage) error
+
+        // Close closes the sender and releases any resources.
+        Close() error
+}
+
+// EmailMessage represents an email message to be sent.
+type EmailMessage struct {
+        // From is the sender email address.
+        From string
+
+        // FromName is the sender name (optional).
+        FromName string
+
+        // To is the list of recipient email addresses.
+        To []string
+
+        // Cc is the list of carbon copy recipient email addresses (optional).
+        Cc []string
+
+        // Bcc is the list of blind carbon copy recipient email addresses (optional).
+        Bcc []string
+
+        // Subject is the email subject line.
+        Subject string
+
+        // PlainText is the plain text body of the email.
+        PlainText string
+
+        // HTML is the HTML body of the email.
+        HTML string
+
+        // ReplyTo is the reply-to email address (optional).
+        ReplyTo string
+}
+
+// Validate validates the email message fields.
+func (m *EmailMessage) Validate() error <span class="cov8" title="1">{
+        if m.From == "" </span><span class="cov8" title="1">{
+                return ErrMissingFrom
+        }</span>
+
+        <span class="cov8" title="1">if len(m.To) == 0 </span><span class="cov8" title="1">{
+                return ErrMissingRecipients
+        }</span>
+
+        <span class="cov8" title="1">if m.Subject == "" </span><span class="cov8" title="1">{
+                return ErrMissingSubject
+        }</span>
+
+        <span class="cov8" title="1">if m.PlainText == "" &amp;&amp; m.HTML == "" </span><span class="cov8" title="1">{
+                return ErrMissingContent
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package mailsender
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/sendgrid/sendgrid-go"
+        "github.com/sendgrid/sendgrid-go/helpers/mail"
+)
+
+// SendGridSender implements the EmailSender interface using SendGrid.
+type SendGridSender struct {
+        client          *sendgrid.Client
+        defaultFrom     string
+        defaultFromName string
+}
+
+// NewSendGrid creates a new SendGrid email sender with the provided configuration.
+func NewSendGrid(config *Config) (*SendGridSender, error) <span class="cov8" title="1">{
+        if err := config.Validate(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("invalid config: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">if config.Provider != ProviderSendGrid </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%w: expected sendgrid, got %s", ErrInvalidProvider, config.Provider)
+        }</span>
+
+        <span class="cov8" title="1">client := sendgrid.NewSendClient(config.APIKey)
+
+        return &amp;SendGridSender{
+                client:          client,
+                defaultFrom:     config.DefaultFrom,
+                defaultFromName: config.DefaultFromName,
+        }, nil</span>
+}
+
+// NewSendGridWithOptions creates a new SendGrid email sender with functional options.
+func NewSendGridWithOptions(opts ...Option) (*SendGridSender, error) <span class="cov8" title="1">{
+        config := DefaultConfig()
+        config.Provider = ProviderSendGrid
+
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(config)
+        }</span>
+
+        <span class="cov8" title="1">return NewSendGrid(config)</span>
+}
+
+// Send sends an email using SendGrid.
+func (s *SendGridSender) Send(ctx context.Context, message *EmailMessage) error <span class="cov0" title="0">{
+        // Apply defaults if not set
+        if message.From == "" </span><span class="cov0" title="0">{
+                message.From = s.defaultFrom
+        }</span>
+        <span class="cov0" title="0">if message.FromName == "" </span><span class="cov0" title="0">{
+                message.FromName = s.defaultFromName
+        }</span>
+
+        // Validate message
+        <span class="cov0" title="0">if err := message.Validate(); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid message: %w", err)
+        }</span>
+
+        // Build SendGrid message
+        <span class="cov0" title="0">sgMessage := s.buildMessage(message)
+
+        // Send the email
+        response, err := s.client.SendWithContext(ctx, sgMessage)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("%w: %v", ErrSendFailed, err)
+        }</span>
+
+        // Check response status
+        <span class="cov0" title="0">if response.StatusCode &gt;= 400 </span><span class="cov0" title="0">{
+                return fmt.Errorf("%w: status code %d, body: %s", ErrSendFailed, response.StatusCode, response.Body)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Close closes the SendGrid sender and releases any resources.
+func (s *SendGridSender) Close() error <span class="cov8" title="1">{
+        // SendGrid client doesn't require explicit cleanup
+        return nil
+}</span>
+
+// buildMessage builds a SendGrid mail message from an EmailMessage.
+func (s *SendGridSender) buildMessage(message *EmailMessage) *mail.SGMailV3 <span class="cov8" title="1">{
+        from := mail.NewEmail(message.FromName, message.From)
+
+        // Build personalization with all recipients
+        personalization := mail.NewPersonalization()
+
+        // Add To recipients
+        for _, to := range message.To </span><span class="cov8" title="1">{
+                personalization.AddTos(mail.NewEmail("", to))
+        }</span>
+
+        // Add Cc recipients
+        <span class="cov8" title="1">for _, cc := range message.Cc </span><span class="cov8" title="1">{
+                personalization.AddCCs(mail.NewEmail("", cc))
+        }</span>
+
+        // Add Bcc recipients
+        <span class="cov8" title="1">for _, bcc := range message.Bcc </span><span class="cov8" title="1">{
+                personalization.AddBCCs(mail.NewEmail("", bcc))
+        }</span>
+
+        // Create mail object
+        <span class="cov8" title="1">m := mail.NewV3Mail()
+        m.SetFrom(from)
+        m.Subject = message.Subject
+        m.AddPersonalizations(personalization)
+
+        // Add content
+        if message.PlainText != "" </span><span class="cov8" title="1">{
+                m.AddContent(mail.NewContent("text/plain", message.PlainText))
+        }</span>
+        <span class="cov8" title="1">if message.HTML != "" </span><span class="cov8" title="1">{
+                m.AddContent(mail.NewContent("text/html", message.HTML))
+        }</span>
+
+        // Add reply-to if set
+        <span class="cov8" title="1">if message.ReplyTo != "" </span><span class="cov8" title="1">{
+                m.SetReplyTo(mail.NewEmail("", message.ReplyTo))
+        }</span>
+
+        <span class="cov8" title="1">return m</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package mailsender
+
+import (
+        "bytes"
+        "fmt"
+        "html/template"
+        texttemplate "text/template"
+)
+
+// RenderHTMLTemplate renders an HTML template with the given data.
+// The templateStr should be a valid Go html/template string.
+func RenderHTMLTemplate(templateStr string, data interface{}) (string, error) <span class="cov8" title="1">{
+        tmpl, err := template.New("email").Parse(templateStr)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to parse HTML template: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var buf bytes.Buffer
+        if err := tmpl.Execute(&amp;buf, data); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to execute HTML template: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return buf.String(), nil</span>
+}
+
+// RenderTextTemplate renders a plain text template with the given data.
+// The templateStr should be a valid Go text/template string.
+func RenderTextTemplate(templateStr string, data interface{}) (string, error) <span class="cov8" title="1">{
+        tmpl, err := texttemplate.New("email").Parse(templateStr)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to parse text template: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">var buf bytes.Buffer
+        if err := tmpl.Execute(&amp;buf, data); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to execute text template: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return buf.String(), nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

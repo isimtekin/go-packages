@@ -351,6 +351,7 @@ Current packages available:
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0 | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0` |
 | [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1 | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1` |
 | [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | v0.0.2 | `go get github.com/isimtekin/go-packages/http-service@v0.0.2` |
+| [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | - | Not released yet |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -441,6 +442,20 @@ Current packages available:
 - 📊 Built-in /health endpoint, optional /metrics
 - 🎨 FastAPI-inspired developer experience
 - 🔐 Authentication and authorization middleware support
+
+**mail-sender** features:
+- 📧 Multi-provider email sending (SendGrid supported, extensible for more)
+- ⚡ Async/non-blocking email sending with worker pools
+- 🎯 Event-based architecture (OnSuccess, OnFailure, OnRetry)
+- 🔄 Automatic retry logic with configurable attempts and delays
+- 📝 HTML and plain text template rendering with Go templates
+- 🎨 Multiple recipients support (To, Cc, Bcc)
+- 👥 Worker pool for concurrent email sending
+- 📊 Real-time statistics (sent, failed, pending, retried)
+- 🛡️ Graceful shutdown with timeout support
+- ⚙️ Flexible configuration (code, functional options, or env vars)
+- 🔐 Environment variable configuration support
+- ✅ 91.5% test coverage with comprehensive tests
 
 ## 🔄 Development Workflow
 
