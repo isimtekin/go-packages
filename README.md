@@ -351,7 +351,7 @@ Current packages available:
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0 | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0` |
 | [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1 | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1` |
 | [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | v0.0.2 | `go get github.com/isimtekin/go-packages/http-service@v0.0.2` |
-| [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | - | Not released yet |
+| [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | v0.1.0 | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.0` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
