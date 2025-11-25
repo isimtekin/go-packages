@@ -15,9 +15,10 @@ A high-level Redis client wrapper for Go with multi-database support, connection
 - � **High Performance** - Built on go-redis/v9 with connection reuse
 - =� **Thread-Safe** - All operations protected with proper locking
 - < **Environment Config** - Load configuration from environment variables
--  **Comprehensive Testing** - 96 tests with extensive coverage
+-  **Comprehensive Testing** - 184 tests with 80.3% coverage
 - =� **All Redis Types** - String, Hash, List, Set, Sorted Set operations
 - =� **Advanced Features** - Pipelines, Transactions, Pub/Sub
+- =� **Workspace Support** - Optional key prefixing for multi-tenancy and environment separation
 
 ## =� Installation
 
@@ -232,6 +233,81 @@ session := manager.MustDB("session")  // DB 1
 queue := manager.MustDB("queue")      // DB 2
 ```
 
+### Workspace Support
+
+Workspace support allows you to prefix all keys with a workspace identifier. This is useful for:
+- **Multi-tenancy**: Isolate data for different tenants/organizations
+- **Environment separation**: Use the same Redis instance for dev/staging/production
+- **Testing**: Isolate test data from production data
+
+#### Using Workspace
+
+```go
+// Create client with workspace
+client, err := redisclient.NewWithOptions(
+    redisclient.WithAddr("localhost:6379"),
+    redisclient.WithWorkspace("production"),
+)
+
+// All keys are automatically prefixed
+client.Set(ctx, "user:123", "John Doe", 0)
+// Actually stores: "production:user:123" -> "John Doe"
+
+client.Get(ctx, "user:123")
+// Actually retrieves from: "production:user:123"
+
+// Works with all operations
+client.HSet(ctx, "settings", "theme", "dark")
+// Actually stores in: "production:settings"
+```
+
+#### Workspace with Environment Variables
+
+```go
+// Set in environment
+// REDIS_WORKSPACE=staging
+
+client, err := redisclient.NewFromEnvWithDefaults(ctx)
+
+// All keys will be prefixed with "staging:"
+client.Set(ctx, "config:feature", "enabled", 0)
+// Stores: "staging:config:feature"
+```
+
+#### Multi-Environment Example
+
+```go
+// Production environment
+prodClient, _ := redisclient.NewWithOptions(
+    redisclient.WithAddr("localhost:6379"),
+    redisclient.WithWorkspace("production"),
+)
+
+// Staging environment
+stagingClient, _ := redisclient.NewWithOptions(
+    redisclient.WithAddr("localhost:6379"),
+    redisclient.WithWorkspace("staging"),
+)
+
+// These won't conflict
+prodClient.Set(ctx, "cache:home", "prod-html", 0)
+stagingClient.Set(ctx, "cache:home", "staging-html", 0)
+
+// Actual keys:
+// "production:cache:home" -> "prod-html"
+// "staging:cache:home" -> "staging-html"
+```
+
+**Note**: The workspace prefix is applied automatically to all operations including:
+- String operations (Get, Set, etc.)
+- Hash operations (HGet, HSet, etc.)
+- List operations (LPush, RPop, etc.)
+- Set operations (SAdd, SMembers, etc.)
+- Sorted Set operations (ZAdd, ZRange, etc.)
+- Key operations (Del, Exists, Keys, etc.)
+- Pub/Sub operations (Publish, Subscribe, etc.)
+- Transaction operations (Watch, etc.)
+
 ### String Operations
 
 ```go
@@ -428,6 +504,7 @@ REDIS_ADDR=localhost:6379
 # Optional
 REDIS_PASSWORD=secret
 REDIS_DB=0
+REDIS_WORKSPACE=production
 REDIS_MAX_RETRIES=3
 REDIS_MIN_IDLE_CONNS=5
 REDIS_MAX_IDLE_CONNS=10
@@ -476,6 +553,7 @@ config := &redisclient.Config{
     Addr:     "localhost:6379", // host:port
     Password: "",               // optional password
     DB:       0,                // database number
+    Workspace: "",              // optional key prefix (e.g., "production", "staging")
 
     // Connection pool
     MaxRetries:      3,
@@ -507,6 +585,7 @@ client, _ := redisclient.NewWithOptions(
     redisclient.WithAddr("localhost:6379"),
     redisclient.WithPassword("secret"),
     redisclient.WithDB(0),
+    redisclient.WithWorkspace("production"),
     redisclient.WithMaxRetries(5),
     redisclient.WithPoolSize(200),
     redisclient.WithMinIdleConns(10),
@@ -656,13 +735,14 @@ go test -v -run TestDBManager
 go test -race ./...
 ```
 
-**Test Coverage**: 68 tests covering:
+**Test Coverage**: 184 tests with 80.3% coverage covering:
 - Configuration validation
 - Connection management
 - All Redis operations
 - Multi-database functionality
 - Error handling
 - Thread safety
+- Workspace operations and key prefixing
 
 ## =� Examples
 

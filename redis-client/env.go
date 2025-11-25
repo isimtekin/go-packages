@@ -17,6 +17,7 @@ func LoadConfigFromEnv(prefix string) (*Config, error) {
 		Addr:            env.GetString("ADDR", "localhost:6379"),
 		Password:        env.GetString("PASSWORD", ""),
 		DB:              env.GetInt("DB", 0),
+		Workspace:       env.GetString("WORKSPACE", ""),
 		MaxRetries:      env.GetInt("MAX_RETRIES", 3),
 		MinIdleConns:    env.GetInt("MIN_IDLE_CONNS", 5),
 		MaxIdleConns:    env.GetInt("MAX_IDLE_CONNS", 10),

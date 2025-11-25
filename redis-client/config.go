@@ -12,6 +12,12 @@ type Config struct {
 	Password string `json:"password" yaml:"password"` // password (optional)
 	DB       int    `json:"db" yaml:"db"`             // database number
 
+	// Workspace is an optional prefix for all keys
+	// If set, all keys will be prefixed with "{workspace}:"
+	// Example: workspace="production" => key="user:123" becomes "production:user:123"
+	// This is useful for multi-tenancy or environment separation
+	Workspace string `json:"workspace" yaml:"workspace"`
+
 	// Connection pool settings
 	MaxRetries      int           `json:"max_retries" yaml:"max_retries"`
 	MinIdleConns    int           `json:"min_idle_conns" yaml:"min_idle_conns"`
@@ -88,4 +94,25 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// ApplyWorkspacePrefix applies the workspace prefix to a key if workspace is configured
+func (c *Config) ApplyWorkspacePrefix(key string) string {
+	if c.Workspace == "" || key == "" {
+		return key
+	}
+	return fmt.Sprintf("%s:%s", c.Workspace, key)
+}
+
+// ApplyWorkspacePrefixToKeys applies the workspace prefix to multiple keys
+func (c *Config) ApplyWorkspacePrefixToKeys(keys []string) []string {
+	if c.Workspace == "" {
+		return keys
+	}
+
+	prefixedKeys := make([]string, len(keys))
+	for i, key := range keys {
+		prefixedKeys[i] = c.ApplyWorkspacePrefix(key)
+	}
+	return prefixedKeys
 }

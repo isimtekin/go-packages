@@ -26,6 +26,14 @@ func WithDB(db int) Option {
 	}
 }
 
+// WithWorkspace sets the workspace prefix for all keys
+// Example: WithWorkspace("production") => keys will be prefixed with "production:"
+func WithWorkspace(workspace string) Option {
+	return func(c *Config) {
+		c.Workspace = workspace
+	}
+}
+
 // WithMaxRetries sets the maximum number of retries
 func WithMaxRetries(retries int) Option {
 	return func(c *Config) {

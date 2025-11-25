@@ -167,6 +167,7 @@ func (c *Client) Get(ctx context.Context, key string) (string, error) {
 		return "", ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Get(ctx, key).Result()
 }
 
@@ -183,6 +184,7 @@ func (c *Client) Set(ctx context.Context, key string, value interface{}, ttl tim
 		return ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Set(ctx, key, value, ttl).Err()
 }
 
@@ -199,6 +201,7 @@ func (c *Client) SetNX(ctx context.Context, key string, value interface{}, ttl t
 		return false, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SetNX(ctx, key, value, ttl).Result()
 }
 
@@ -219,6 +222,7 @@ func (c *Client) SetEX(ctx context.Context, key string, value interface{}, ttl t
 		return ErrInvalidTTL
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SetEx(ctx, key, value, ttl).Err()
 }
 
@@ -235,6 +239,7 @@ func (c *Client) GetSet(ctx context.Context, key string, value interface{}) (str
 		return "", ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.GetSet(ctx, key, value).Result()
 }
 
@@ -247,6 +252,7 @@ func (c *Client) MGet(ctx context.Context, keys ...string) ([]interface{}, error
 		return nil, ErrClientClosed
 	}
 
+	keys = c.config.ApplyWorkspacePrefixToKeys(keys)
 	return c.client.MGet(ctx, keys...).Result()
 }
 
@@ -257,6 +263,24 @@ func (c *Client) MSet(ctx context.Context, values ...interface{}) error {
 
 	if c.closed {
 		return ErrClientClosed
+	}
+
+	// Apply workspace prefix to keys in the key-value pairs
+	// values is expected to be in the format: key1, value1, key2, value2, ...
+	if c.config.Workspace != "" {
+		prefixedValues := make([]interface{}, len(values))
+		for i := 0; i < len(values); i += 2 {
+			if i+1 < len(values) {
+				if key, ok := values[i].(string); ok {
+					prefixedValues[i] = c.config.ApplyWorkspacePrefix(key)
+					prefixedValues[i+1] = values[i+1]
+				} else {
+					prefixedValues[i] = values[i]
+					prefixedValues[i+1] = values[i+1]
+				}
+			}
+		}
+		values = prefixedValues
 	}
 
 	return c.client.MSet(ctx, values...).Err()
@@ -275,6 +299,7 @@ func (c *Client) Incr(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Incr(ctx, key).Result()
 }
 
@@ -291,6 +316,7 @@ func (c *Client) IncrBy(ctx context.Context, key string, value int64) (int64, er
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.IncrBy(ctx, key, value).Result()
 }
 
@@ -307,6 +333,7 @@ func (c *Client) Decr(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Decr(ctx, key).Result()
 }
 
@@ -323,6 +350,7 @@ func (c *Client) DecrBy(ctx context.Context, key string, value int64) (int64, er
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.DecrBy(ctx, key, value).Result()
 }
 
@@ -339,6 +367,7 @@ func (c *Client) Del(ctx context.Context, keys ...string) (int64, error) {
 		return 0, ErrClientClosed
 	}
 
+	keys = c.config.ApplyWorkspacePrefixToKeys(keys)
 	return c.client.Del(ctx, keys...).Result()
 }
 
@@ -351,6 +380,7 @@ func (c *Client) Exists(ctx context.Context, keys ...string) (int64, error) {
 		return 0, ErrClientClosed
 	}
 
+	keys = c.config.ApplyWorkspacePrefixToKeys(keys)
 	return c.client.Exists(ctx, keys...).Result()
 }
 
@@ -367,6 +397,7 @@ func (c *Client) Expire(ctx context.Context, key string, ttl time.Duration) (boo
 		return false, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Expire(ctx, key, ttl).Result()
 }
 
@@ -383,6 +414,7 @@ func (c *Client) TTL(ctx context.Context, key string) (time.Duration, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.TTL(ctx, key).Result()
 }
 
@@ -399,6 +431,7 @@ func (c *Client) Persist(ctx context.Context, key string) (bool, error) {
 		return false, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.Persist(ctx, key).Result()
 }
 
@@ -411,6 +444,7 @@ func (c *Client) Keys(ctx context.Context, pattern string) ([]string, error) {
 		return nil, ErrClientClosed
 	}
 
+	pattern = c.config.ApplyWorkspacePrefix(pattern)
 	return c.client.Keys(ctx, pattern).Result()
 }
 
@@ -431,6 +465,7 @@ func (c *Client) HSet(ctx context.Context, key string, values ...interface{}) (i
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HSet(ctx, key, values...).Result()
 }
 
@@ -447,6 +482,7 @@ func (c *Client) HGet(ctx context.Context, key, field string) (string, error) {
 		return "", ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HGet(ctx, key, field).Result()
 }
 
@@ -463,6 +499,7 @@ func (c *Client) HGetAll(ctx context.Context, key string) (map[string]string, er
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HGetAll(ctx, key).Result()
 }
 
@@ -479,6 +516,7 @@ func (c *Client) HDel(ctx context.Context, key string, fields ...string) (int64,
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HDel(ctx, key, fields...).Result()
 }
 
@@ -495,6 +533,7 @@ func (c *Client) HExists(ctx context.Context, key, field string) (bool, error) {
 		return false, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HExists(ctx, key, field).Result()
 }
 
@@ -511,6 +550,7 @@ func (c *Client) HIncrBy(ctx context.Context, key, field string, incr int64) (in
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HIncrBy(ctx, key, field, incr).Result()
 }
 
@@ -527,6 +567,7 @@ func (c *Client) HKeys(ctx context.Context, key string) ([]string, error) {
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HKeys(ctx, key).Result()
 }
 
@@ -543,6 +584,7 @@ func (c *Client) HLen(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.HLen(ctx, key).Result()
 }
 
@@ -563,6 +605,7 @@ func (c *Client) LPush(ctx context.Context, key string, values ...interface{}) (
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.LPush(ctx, key, values...).Result()
 }
 
@@ -579,6 +622,7 @@ func (c *Client) RPush(ctx context.Context, key string, values ...interface{}) (
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.RPush(ctx, key, values...).Result()
 }
 
@@ -595,6 +639,7 @@ func (c *Client) LPop(ctx context.Context, key string) (string, error) {
 		return "", ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.LPop(ctx, key).Result()
 }
 
@@ -611,6 +656,7 @@ func (c *Client) RPop(ctx context.Context, key string) (string, error) {
 		return "", ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.RPop(ctx, key).Result()
 }
 
@@ -627,6 +673,7 @@ func (c *Client) LRange(ctx context.Context, key string, start, stop int64) ([]s
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.LRange(ctx, key, start, stop).Result()
 }
 
@@ -643,6 +690,7 @@ func (c *Client) LLen(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.LLen(ctx, key).Result()
 }
 
@@ -663,6 +711,7 @@ func (c *Client) SAdd(ctx context.Context, key string, members ...interface{}) (
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SAdd(ctx, key, members...).Result()
 }
 
@@ -679,6 +728,7 @@ func (c *Client) SMembers(ctx context.Context, key string) ([]string, error) {
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SMembers(ctx, key).Result()
 }
 
@@ -695,6 +745,7 @@ func (c *Client) SIsMember(ctx context.Context, key string, member interface{}) 
 		return false, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SIsMember(ctx, key, member).Result()
 }
 
@@ -711,6 +762,7 @@ func (c *Client) SRem(ctx context.Context, key string, members ...interface{}) (
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SRem(ctx, key, members...).Result()
 }
 
@@ -727,6 +779,7 @@ func (c *Client) SCard(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.SCard(ctx, key).Result()
 }
 
@@ -747,6 +800,7 @@ func (c *Client) ZAdd(ctx context.Context, key string, members ...redis.Z) (int6
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZAdd(ctx, key, members...).Result()
 }
 
@@ -763,6 +817,7 @@ func (c *Client) ZRange(ctx context.Context, key string, start, stop int64) ([]s
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZRange(ctx, key, start, stop).Result()
 }
 
@@ -779,6 +834,7 @@ func (c *Client) ZRangeWithScores(ctx context.Context, key string, start, stop i
 		return nil, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZRangeWithScores(ctx, key, start, stop).Result()
 }
 
@@ -795,6 +851,7 @@ func (c *Client) ZRem(ctx context.Context, key string, members ...interface{}) (
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZRem(ctx, key, members...).Result()
 }
 
@@ -811,6 +868,7 @@ func (c *Client) ZCard(ctx context.Context, key string) (int64, error) {
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZCard(ctx, key).Result()
 }
 
@@ -827,6 +885,7 @@ func (c *Client) ZScore(ctx context.Context, key, member string) (float64, error
 		return 0, ErrInvalidKey
 	}
 
+	key = c.config.ApplyWorkspacePrefix(key)
 	return c.client.ZScore(ctx, key, member).Result()
 }
 
@@ -857,16 +916,19 @@ func (c *Client) Publish(ctx context.Context, channel string, message interface{
 		return 0, ErrClientClosed
 	}
 
+	channel = c.config.ApplyWorkspacePrefix(channel)
 	return c.client.Publish(ctx, channel, message).Result()
 }
 
 // Subscribe subscribes to the given channels
 func (c *Client) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
+	channels = c.config.ApplyWorkspacePrefixToKeys(channels)
 	return c.client.Subscribe(ctx, channels...)
 }
 
 // PSubscribe subscribes to channels matching the given patterns
 func (c *Client) PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
+	patterns = c.config.ApplyWorkspacePrefixToKeys(patterns)
 	return c.client.PSubscribe(ctx, patterns...)
 }
 
@@ -883,5 +945,6 @@ func (c *Client) Watch(ctx context.Context, fn func(*redis.Tx) error, keys ...st
 		return ErrClientClosed
 	}
 
+	keys = c.config.ApplyWorkspacePrefixToKeys(keys)
 	return c.client.Watch(ctx, fn, keys...)
 }
