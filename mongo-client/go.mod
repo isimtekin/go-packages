@@ -3,7 +3,7 @@ module github.com/isimtekin/go-packages/mongo-client
 go 1.24.4
 
 require (
-	github.com/isimtekin/go-packages/env-util v0.0.0-00010101000000-000000000000
+	github.com/isimtekin/go-packages/env-util v0.0.2
 	go.mongodb.org/mongo-driver v1.17.6
 )
 
@@ -19,5 +19,3 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
 )
-
-replace github.com/isimtekin/go-packages/env-util => ../env-util
