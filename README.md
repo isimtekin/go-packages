@@ -341,17 +341,18 @@ git push origin "package-name/v1.0.0"
 
 Current packages available:
 
-| Package | Description | Latest Version | Install |
-|---------|-------------|----------------|---------|
-| [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | v0.0.2 | `go get github.com/isimtekin/go-packages/env-util@v0.0.2` |
-| [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.0.4 | `go get github.com/isimtekin/go-packages/mongo-client@v0.0.4` |
-| [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.1.1 | `go get github.com/isimtekin/go-packages/redis-client@v0.1.1` |
-| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2 | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2` |
-| [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1 | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1` |
-| [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0 | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0` |
-| [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1 | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1` |
-| [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | v0.0.2 | `go get github.com/isimtekin/go-packages/http-service@v0.0.2` |
-| [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | v0.1.1 | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.1` |
+| Package | Description | Latest Version | Install                                                         |
+|---------|-------------|----------------|-----------------------------------------------------------------|
+| [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | v0.0.2         | `go get github.com/isimtekin/go-packages/env-util@v0.0.2`       |
+| [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.0.4         | `go get github.com/isimtekin/go-packages/mongo-client@v0.0.4`   |
+| [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.1.1         | `go get github.com/isimtekin/go-packages/redis-client@v0.1.1`   |
+| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2         | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2`    |
+| [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1         | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1`   |
+| [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0         | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0`   |
+| [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1         | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1` |
+| [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | v0.0.2         | `go get github.com/isimtekin/go-packages/http-service@v0.0.2`   |
+| [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | v0.1.1         | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.1`    |
+| [logger](./logger) | Flexible logging with console, Logstash, and file outputs; enable/disable support for ELK stack | v0.0.0         | `go get github.com/isimtekin/go-packages/logger@v0.0.0`         |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -456,6 +457,20 @@ Current packages available:
 - ⚙️ Flexible configuration (code, functional options, or env vars)
 - 🔐 Environment variable configuration support
 - ✅ 91.5% test coverage with comprehensive tests
+
+**logger** features:
+- 📝 Multiple outputs (console, Logstash TCP/UDP, file, multi-output)
+- 🔌 Enable/disable logging with zero overhead when disabled
+- 🐛 Debug mode detection for conditional expensive operations
+- 📊 Structured logging with type-safe field helpers
+- 🔍 ELK stack integration with Logstash-compatible JSON format
+- 🔄 Automatic reconnection and buffering for Logstash
+- 🎨 Colored console output with JSON or text formatting
+- 🌐 Environment variable configuration with custom prefixes
+- ⚙️ Functional options pattern for flexible setup
+- 📦 Context-aware logging with request tracking
+- 🏷️ Service metadata (name, environment, version, host)
+- ✅ 53.7% test coverage with 56 comprehensive tests
 
 ## 🔄 Development Workflow
 
