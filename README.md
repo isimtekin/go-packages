@@ -354,6 +354,7 @@ Current packages available:
 | [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | v0.1.1         | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.1`     |
 | [logger](./logger) | Flexible logging with console, Logstash, and file outputs; enable/disable support for ELK stack | v0.0.0         | `go get github.com/isimtekin/go-packages/logger@v0.0.0`          |
 | [postgres-client](./postgres-client) | PostgreSQL client wrapper with connection pooling, transactions, and error helpers | v0.0.0         | `go get github.com/isimtekin/go-packages/postgres-client@v0.0.0` |
+| [s3-client](./s3-client) | AWS S3 and MinIO client with upload, download, multipart, and presigned URL support | v0.0.1         | `go get github.com/isimtekin/go-packages/s3-client@v0.0.1` |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
@@ -486,6 +487,20 @@ Current packages available:
 - ⏱️ Configurable timeouts for connections and queries
 - 🧵 Thread-safe for concurrent use
 - ✅ 69.3% test coverage with comprehensive tests
+
+**s3-client** features:
+- 📤 Upload files to S3 (simple and multipart)
+- 📥 Download files from S3 to memory or writer
+- 🗑️ Delete single or multiple objects
+- 📋 List objects with pagination support
+- 🔍 Check object existence and get metadata
+- 📦 Copy objects within bucket
+- 🔗 Generate presigned URLs for download and upload
+- 🪣 Full MinIO and LocalStack support
+- 🎯 Automatic content type detection
+- ⚙️ Environment variable configuration with custom prefixes
+- 🧵 Thread-safe for concurrent use
+- ✅ 41.5% test coverage with 21 comprehensive tests
 
 ## 🔄 Development Workflow
 
