@@ -5,7 +5,7 @@ A PostgreSQL client wrapper for Go with connection pooling, transaction support,
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/postgres-client@v0.1.0
+go get github.com/isimtekin/go-packages/postgres-client@v0.2.0
 ```
 
 ## Features
