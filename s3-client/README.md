@@ -5,7 +5,7 @@ A Go client library for AWS S3 and S3-compatible storage services with support f
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/s3-client@v0.0.1
+go get github.com/isimtekin/go-packages/s3-client@v0.1.0
 ```
 
 ## Features
