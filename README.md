@@ -354,7 +354,7 @@ Current packages available:
 | [mail-sender](./mail-sender) | Flexible email sending library with SendGrid support, async sending, and template rendering | v0.1.1         | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.1`     |
 | [logger](./logger) | Flexible logging with console, Logstash, and file outputs; enable/disable support for ELK stack | v0.0.0         | `go get github.com/isimtekin/go-packages/logger@v0.0.0`          |
 | [postgres-client](./postgres-client) | PostgreSQL client wrapper with connection pooling, transactions, and error helpers | v0.0.0         | `go get github.com/isimtekin/go-packages/postgres-client@v0.0.0` |
-| [s3-client](./s3-client) | AWS S3 and MinIO client with upload, download, multipart, and presigned URL support | v0.0.1         | `go get github.com/isimtekin/go-packages/s3-client@v0.0.1` |
+| [s3-client](./s3-client) | AWS S3 and MinIO client with upload, download, multipart, and presigned URL support | v0.1.0         | `go get github.com/isimtekin/go-packages/s3-client@v0.1.0`       |
 
 **env-util** features:
 - 🔒 Type-safe environment variable parsing (string, int, bool, duration, URL, etc.)
