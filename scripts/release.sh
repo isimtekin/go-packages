@@ -48,9 +48,10 @@ fi
 echo "Updating root README.md package list..."
 if [ -f "README.md" ]; then
     # Use awk for more reliable table update
+    # Pattern matches header with any amount of trailing spaces
     awk -v pkg="$PACKAGE" -v ver="v${VERSION}" '
     BEGIN { in_table = 0 }
-    /^\| Package \| Description \| Latest Version \| Install \|/ { in_table = 1; print; next }
+    /^\| Package +\| Description +\| Latest Version +\| Install/ { in_table = 1; print; next }
     /^\|[-]+\|[-]+\|[-]+\|[-]+\|/ && in_table { print; next }
     in_table && /^\|/ {
         if ($0 ~ "\\[" pkg "\\]") {

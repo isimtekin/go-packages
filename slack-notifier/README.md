@@ -19,7 +19,7 @@ A robust and easy-to-use Go client for sending notifications to Slack via incomi
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/slack-notifier
+go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1
 ```
 
 ## Quick Start
@@ -301,7 +301,7 @@ See the `examples/` directory for more usage examples.
 ## Setting Up Slack Webhook
 
 1. Go to your Slack workspace
-2. Navigate to Apps ’ Incoming Webhooks
+2. Navigate to Apps ï¿½ Incoming Webhooks
 3. Click "Add to Slack"
 4. Choose a channel and click "Add Incoming WebHooks Integration"
 5. Copy the webhook URL

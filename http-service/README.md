@@ -4,21 +4,21 @@ A FastAPI-inspired HTTP service framework for Go built on `fasthttp`. Create pro
 
 ## Features
 
-- **=€ FastHTTP-powered**: Built on `fasthttp` for maximum performance
-- **=Ý Auto OpenAPI Docs**: Automatic OpenAPI 3.0 spec generation + Swagger UI at `/docs`
+- **=ï¿½ FastHTTP-powered**: Built on `fasthttp` for maximum performance
+- **=ï¿½ Auto OpenAPI Docs**: Automatic OpenAPI 3.0 spec generation + Swagger UI at `/docs`
 - ** Request Validation**: Integrated `go-playground/validator` for automatic validation
-- **<¯ Type-Safe Handlers**: Generic handler types for compile-time safety
+- **<ï¿½ Type-Safe Handlers**: Generic handler types for compile-time safety
 - **=' Middleware System**: Built-in middleware (CORS, logging, recovery, rate limiting, etc.)
-- **<× Builder Pattern**: Fluent API for service and route configuration
-- **¡ Context Support**: Full `context.Context` integration for cancellation and timeouts
+- **<ï¿½ Builder Pattern**: Fluent API for service and route configuration
+- **ï¿½ Context Support**: Full `context.Context` integration for cancellation and timeouts
 - **= Production Ready**: Graceful shutdown, panic recovery, request IDs
-- **=Ê Health & Metrics**: Built-in `/health` endpoint, optional `/metrics`
-- **<¨ Clean API**: Inspired by FastAPI's developer experience
+- **=ï¿½ Health & Metrics**: Built-in `/health` endpoint, optional `/metrics`
+- **<ï¿½ Clean API**: Inspired by FastAPI's developer experience
 
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/http-service
+go get github.com/isimtekin/go-packages/http-service@v0.0.2
 ```
 
 ## Quick Start
