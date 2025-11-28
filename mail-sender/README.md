@@ -1,11 +1,13 @@
 # mail-sender
 
-A simple and flexible email sending library for Go with support for multiple email service providers. Currently supports SendGrid with an extensible architecture for adding more providers.
+A simple and flexible email sending library for Go with support for multiple email service providers. Supports SendGrid, SMTP, and AWS SES with an extensible architecture for adding more providers.
 
 ## Features
 
-- **Multi-Provider Support**: Abstract interface for different email providers (SendGrid supported, more coming soon)
+- **Multi-Provider Support**: Use multiple providers simultaneously with `SenderManager`
 - **SendGrid Integration**: Full support for SendGrid email service
+- **SMTP Support**: Standard SMTP with TLS/SSL and authentication
+- **AWS SES Integration**: Amazon Simple Email Service support
 - **Async/Event-Based Sending**: Non-blocking email sending with worker pools and event handlers
 - **Template Support**: Built-in HTML and plain text template rendering using Go templates
 - **Flexible Configuration**: Configure via code, functional options, or environment variables
@@ -22,7 +24,7 @@ A simple and flexible email sending library for Go with support for multiple ema
   - Real-time statistics (sent, failed, pending, retried)
   - Queue-based architecture with configurable buffer size
 - **Simple API**: Easy-to-use interface with sensible defaults
-- **Well Tested**: Comprehensive unit tests with >90% coverage
+- **Well Tested**: Comprehensive unit tests with >80% coverage
 
 ## Installation
 
@@ -87,6 +89,163 @@ err = sender.Send(context.Background(), &mailsender.EmailMessage{
     Subject:   "Hello!",
     PlainText: "Configured from environment variables.",
 })
+```
+
+### Multi-Provider Setup with SenderManager
+
+Use `SenderManager` to register multiple providers and choose which one to use when sending:
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    mailsender "github.com/isimtekin/go-packages/mail-sender"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // Create a sender manager
+    manager := mailsender.NewSenderManager()
+    defer manager.Close()
+
+    // Register SendGrid provider
+    sendgrid, err := mailsender.NewSendGridWithOptions(
+        mailsender.WithAPIKey("your-sendgrid-api-key"),
+        mailsender.WithDefaultFrom("sendgrid@example.com"),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    manager.Register("sendgrid", sendgrid)
+
+    // Register SMTP provider
+    smtp, err := mailsender.NewSMTPWithOptions(
+        mailsender.WithSMTPHost("smtp.gmail.com"),
+        mailsender.WithSMTPPort(587),
+        mailsender.WithSMTPAuth("user@gmail.com", "app-password"),
+        mailsender.WithSMTPTLS(true),
+        mailsender.WithSMTPDefaultFrom("smtp@example.com", "SMTP Sender"),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    manager.Register("smtp", smtp)
+
+    // Register AWS SES provider
+    ses, err := mailsender.NewSESWithOptions(ctx,
+        mailsender.WithSESRegion("us-east-1"),
+        mailsender.WithSESCredentials("AKIAIOSFODNN7EXAMPLE", "secret-key"),
+        mailsender.WithSESDefaultFrom("ses@example.com", "SES Sender"),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    manager.Register("ses", ses)
+
+    // Set default sender (optional, first registered is default)
+    manager.SetDefault("sendgrid")
+
+    // Set global default from address (optional)
+    manager.SetDefaultFrom("noreply@example.com", "My App")
+
+    message := &mailsender.EmailMessage{
+        To:        []string{"recipient@example.com"},
+        Subject:   "Hello!",
+        PlainText: "This email can be sent via any provider.",
+    }
+
+    // Send via specific provider
+    err = manager.Send(ctx, "sendgrid", message)
+    err = manager.Send(ctx, "smtp", message)
+    err = manager.Send(ctx, "ses", message)
+
+    // Or send via default provider
+    err = manager.SendDefault(ctx, message)
+}
+```
+
+### Using SMTP Provider
+
+```go
+// Create SMTP sender with authentication
+sender, err := mailsender.NewSMTPWithOptions(
+    mailsender.WithSMTPHost("smtp.gmail.com"),
+    mailsender.WithSMTPPort(587),
+    mailsender.WithSMTPAuth("user@gmail.com", "app-password"),
+    mailsender.WithSMTPTLS(true),
+    mailsender.WithSMTPDefaultFrom("sender@example.com", "My App"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer sender.Close()
+
+err = sender.Send(context.Background(), &mailsender.EmailMessage{
+    To:        []string{"recipient@example.com"},
+    Subject:   "Hello via SMTP!",
+    PlainText: "This email was sent via SMTP.",
+})
+```
+
+**SMTP Configuration Options:**
+
+```go
+mailsender.WithSMTPHost("smtp.example.com")      // SMTP server hostname
+mailsender.WithSMTPPort(587)                      // SMTP server port (587 for TLS, 465 for SSL)
+mailsender.WithSMTPAuth("user", "password")       // Authentication credentials
+mailsender.WithSMTPTLS(true)                      // Enable TLS (STARTTLS)
+mailsender.WithSMTPInsecureSkipVerify(false)      // Skip TLS certificate verification
+mailsender.WithSMTPTimeout(30 * time.Second)      // Connection timeout
+mailsender.WithSMTPDefaultFrom("from@example.com", "Sender Name")
+mailsender.WithSMTPLocalName("localhost")         // HELO/EHLO hostname
+```
+
+### Using AWS SES Provider
+
+```go
+ctx := context.Background()
+
+// Create SES sender with explicit credentials
+sender, err := mailsender.NewSESWithOptions(ctx,
+    mailsender.WithSESRegion("us-east-1"),
+    mailsender.WithSESCredentials("AKIAIOSFODNN7EXAMPLE", "your-secret-key"),
+    mailsender.WithSESDefaultFrom("sender@example.com", "My App"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer sender.Close()
+
+err = sender.Send(ctx, &mailsender.EmailMessage{
+    To:        []string{"recipient@example.com"},
+    Subject:   "Hello via AWS SES!",
+    PlainText: "This email was sent via AWS SES.",
+})
+```
+
+**AWS SES with Default Credential Chain:**
+
+```go
+// Uses AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY environment variables
+// or IAM role credentials
+sender, err := mailsender.NewSESWithOptions(ctx,
+    mailsender.WithSESRegion("us-east-1"),
+)
+```
+
+**SES Configuration Options:**
+
+```go
+mailsender.WithSESRegion("us-east-1")                          // AWS region
+mailsender.WithSESCredentials("access-key", "secret-key")      // AWS credentials
+mailsender.WithSESSessionToken("token")                         // Session token (for temporary credentials)
+mailsender.WithSESEndpoint("http://localhost:4566")            // Custom endpoint (LocalStack)
+mailsender.WithSESDefaultFrom("from@example.com", "Sender")
+mailsender.WithSESConfigurationSet("my-config-set")            // SES configuration set
 ```
 
 ### Async/Non-Blocking Email Sending
@@ -525,13 +684,85 @@ sender, err := mailsender.NewSendGridWithOptions(
 )
 ```
 
+### SMTP
+
+Standard SMTP support for any SMTP server (Gmail, Outlook, custom servers, etc.).
+
+**Features:**
+- TLS/SSL encryption (STARTTLS on port 587, implicit TLS on port 465)
+- Plain authentication
+- Custom HELO/EHLO hostname
+- Configurable timeouts
+
+**Example:**
+```go
+sender, err := mailsender.NewSMTPWithOptions(
+    mailsender.WithSMTPHost("smtp.gmail.com"),
+    mailsender.WithSMTPPort(587),
+    mailsender.WithSMTPAuth("user@gmail.com", "app-password"),
+    mailsender.WithSMTPTLS(true),
+)
+```
+
+**Common SMTP Configurations:**
+
+| Provider | Host | Port | TLS |
+|----------|------|------|-----|
+| Gmail | smtp.gmail.com | 587 | Yes |
+| Outlook | smtp.office365.com | 587 | Yes |
+| Yahoo | smtp.mail.yahoo.com | 587 | Yes |
+| AWS SES (SMTP) | email-smtp.{region}.amazonaws.com | 587 | Yes |
+
+### AWS SES
+
+Amazon Simple Email Service - scalable, cost-effective email sending.
+
+**Setup:**
+1. Sign up for [AWS](https://aws.amazon.com/)
+2. Verify your domain or email address in SES
+3. Get your AWS credentials (Access Key ID and Secret Access Key)
+
+**Example:**
+```go
+sender, err := mailsender.NewSESWithOptions(ctx,
+    mailsender.WithSESRegion("us-east-1"),
+    mailsender.WithSESCredentials("AKIAIOSFODNN7EXAMPLE", "secret-key"),
+)
+```
+
+**Features:**
+- Supports AWS credential chain (environment, IAM role, config file)
+- Custom endpoints for LocalStack testing
+- Configuration set support for tracking
+
+### SenderManager (Multi-Provider)
+
+Manage multiple providers and choose which one to use at runtime.
+
+**Example:**
+```go
+manager := mailsender.NewSenderManager()
+
+manager.Register("primary", sendgridSender)
+manager.Register("backup", smtpSender)
+manager.Register("bulk", sesSender)
+
+// Send via specific provider
+manager.Send(ctx, "primary", message)
+
+// Send via default provider
+manager.SendDefault(ctx, message)
+
+// List all providers
+providers := manager.List() // ["primary", "backup", "bulk"]
+```
+
 ### Future Providers
 
-The library is designed to support multiple providers. Future providers may include:
-- Amazon SES
+The library is designed to support additional providers:
 - Mailgun
 - Postmark
-- SMTP (generic)
+- Mailchimp Transactional (Mandrill)
 
 ## Error Handling
 
@@ -655,6 +886,12 @@ This package is part of the [go-packages](https://github.com/isimtekin/go-packag
 For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/isimtekin/go-packages).
 
 ## Changelog
+
+### v0.2.0
+- **Multi-Provider Support**: New `SenderManager` for managing multiple providers
+- **SMTP Provider**: Standard SMTP support with TLS/SSL and authentication
+- **AWS SES Provider**: Amazon Simple Email Service integration
+- Improved test coverage (>80%)
 
 ### v0.1.0 (Initial Release)
 - SendGrid provider support

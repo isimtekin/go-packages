@@ -8,6 +8,12 @@ type Provider string
 const (
 	// ProviderSendGrid represents the SendGrid email service.
 	ProviderSendGrid Provider = "sendgrid"
+
+	// ProviderSMTP represents a standard SMTP email service.
+	ProviderSMTP Provider = "smtp"
+
+	// ProviderSES represents the AWS Simple Email Service.
+	ProviderSES Provider = "ses"
 )
 
 // Config holds the configuration for the email sender.
@@ -33,11 +39,15 @@ func (c *Config) Validate() error {
 		return ErrInvalidProvider
 	}
 
-	if c.Provider != ProviderSendGrid {
+	switch c.Provider {
+	case ProviderSendGrid, ProviderSMTP, ProviderSES:
+		// Valid provider
+	default:
 		return fmt.Errorf("%w: %s", ErrInvalidProvider, c.Provider)
 	}
 
-	if c.APIKey == "" {
+	// APIKey is required for SendGrid and SES
+	if (c.Provider == ProviderSendGrid || c.Provider == ProviderSES) && c.APIKey == "" {
 		return ErrMissingAPIKey
 	}
 

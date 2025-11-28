@@ -44,6 +44,17 @@ if [ -f "$PACKAGE/README.md" ]; then
     rm -f "$PACKAGE/README.md.bak"
 fi
 
+# Update CHANGELOG.md
+echo "Updating $PACKAGE/CHANGELOG.md..."
+if [ -f "$PACKAGE/CHANGELOG.md" ]; then
+    TODAY=$(date +%Y-%m-%d)
+    # Replace [Unreleased] with new version and add new [Unreleased] section
+    sed -i.bak "s/## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] - ${TODAY}/" "$PACKAGE/CHANGELOG.md"
+    # Also update any placeholder dates like XXXX-XX-XX for this version
+    sed -i.bak "s/\[${VERSION}\] - [0-9X]\{4\}-[0-9X]\{2\}-[0-9X]\{2\}/[${VERSION}] - ${TODAY}/" "$PACKAGE/CHANGELOG.md"
+    rm -f "$PACKAGE/CHANGELOG.md.bak"
+fi
+
 # Update root README.md package list
 echo "Updating root README.md package list..."
 if [ -f "README.md" ]; then
@@ -72,8 +83,8 @@ fi
 # Commit version updates
 if [ -n "$(git status --porcelain)" ]; then
     echo "Committing version updates..."
-    git add "$PACKAGE/README.md" README.md
-    git commit -m "${PACKAGE}: update version to v${VERSION}"
+    git add "$PACKAGE/README.md" "$PACKAGE/CHANGELOG.md" README.md 2>/dev/null
+    git commit -m "${PACKAGE}: release v${VERSION}"
     git push origin main || git push origin master
 fi
 
