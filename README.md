@@ -351,7 +351,7 @@ Current packages available:
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0         | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0`    |
 | [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1         | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1`  |
 | [http-service](./http-service) | FastAPI-inspired HTTP framework with auto OpenAPI docs and request validation | v0.0.2         | `go get github.com/isimtekin/go-packages/http-service@v0.0.2`    |
-| [mail-sender](./mail-sender) | Multi-provider email library with SendGrid, SMTP, AWS SES, async sending, and templates | v0.1.1         | `go get github.com/isimtekin/go-packages/mail-sender@v0.1.1`     |
+| [mail-sender](./mail-sender) | Multi-provider email library with SendGrid, SMTP, AWS SES, async sending, and templates | v0.2.0 | `go get github.com/isimtekin/go-packages/mail-sender@v0.2.0` |
 | [logger](./logger) | Flexible logging with console, Logstash, and file outputs; enable/disable support for ELK stack | v0.1.0         | `go get github.com/isimtekin/go-packages/logger@v0.1.0`          |
 | [postgres-client](./postgres-client) | PostgreSQL client wrapper with connection pooling, transactions, and error helpers | v0.2.0         | `go get github.com/isimtekin/go-packages/postgres-client@v0.2.0` |
 | [s3-client](./s3-client) | AWS S3 and MinIO client with upload, download, multipart, and presigned URL support | v0.1.0         | `go get github.com/isimtekin/go-packages/s3-client@v0.1.0`       |

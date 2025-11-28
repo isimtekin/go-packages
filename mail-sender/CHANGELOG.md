@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2024-XX-XX
+## [0.2.0] - 2025-11-28
+
+## [0.2.0] - 2025-11-28
 
 ### Added
 - **SenderManager**: New component for managing multiple email providers simultaneously
