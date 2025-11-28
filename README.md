@@ -346,7 +346,7 @@ Current packages available:
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | v0.0.2         | `go get github.com/isimtekin/go-packages/env-util@v0.0.2`        |
 | [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.0.4         | `go get github.com/isimtekin/go-packages/mongo-client@v0.0.4`    |
 | [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.1.1         | `go get github.com/isimtekin/go-packages/redis-client@v0.1.1`    |
-| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, and JetStream support | v0.0.2         | `go get github.com/isimtekin/go-packages/nats-client@v0.0.2`     |
+| [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, JetStream streams and consumers | v0.1.0         | `go get github.com/isimtekin/go-packages/nats-client@v0.1.0`     |
 | [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1         | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1`    |
 | [kafka-client](./kafka-client) | Robust Kafka client with producer, consumer, and admin operations | v0.1.0         | `go get github.com/isimtekin/go-packages/kafka-client@v0.1.0`    |
 | [slack-notifier](./slack-notifier) | Easy-to-use Slack webhook notifier with retry logic and Block Kit support | v0.0.1         | `go get github.com/isimtekin/go-packages/slack-notifier@v0.0.1`  |
@@ -388,13 +388,18 @@ Current packages available:
 
 **nats-client** features:
 - 📨 Publish/subscribe messaging patterns
-- 🔄 Request/reply RPC support
+- 🔄 Request/reply RPC support with context
 - 👥 Queue groups for load balancing
-- 🚀 JetStream support for persistence
+- 🚀 JetStream stream management (Create, Update, Delete, List, Purge)
+- 📥 JetStream consumer management (Create, Update, Delete, List)
+- 📤 JetStream publish with acknowledgements and async support
+- 🔔 Pull and push subscriptions for JetStream
 - 🔒 TLS/SSL encryption
 - 🔐 Username/password and token authentication
 - 🔁 Automatic reconnection with backoff
-- 🌐 Environment variable configuration
+- 🌐 Environment variable configuration via env-util
+- 🐳 Docker Compose for local development
+- ✅ 81.7% test coverage with integration tests
 
 **crypto-utils** features:
 - 🔐 AES-GCM and AES-CBC encryption (128/192/256-bit)
