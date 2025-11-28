@@ -195,25 +195,50 @@ stats:
 	@echo "Test coverage:"
 	@$(GOTEST) -cover ./... 2>&1 | grep "coverage:" | tail -1
 
-## docker-up: Start NATS server in Docker
+## docker-up: Start NATS server with docker-compose
 docker-up:
-	@echo "Starting NATS server in Docker..."
-	@docker run -d --name nats-test -p 4222:4222 -p 8222:8222 nats:latest
-	@echo "NATS server started on port 4222 (monitoring on port 8222)"
+	@echo "Starting NATS server with JetStream..."
+	@docker compose up -d
+	@echo "Waiting for NATS to be healthy..."
+	@sleep 3
+	@docker compose ps
+	@echo ""
+	@echo "NATS server started:"
+	@echo "  - Client:     nats://localhost:4222"
+	@echo "  - Monitoring: http://localhost:8222"
+	@echo "  - JetStream:  enabled"
 
-## docker-down: Stop NATS server in Docker
+## docker-down: Stop NATS server
 docker-down:
-	@echo "Stopping NATS server in Docker..."
-	@docker stop nats-test || true
-	@docker rm nats-test || true
+	@echo "Stopping NATS server..."
+	@docker compose down -v
 	@echo "NATS server stopped"
 
+## docker-logs: Show NATS server logs
+docker-logs:
+	@docker compose logs -f nats
+
+## docker-status: Show NATS server status
+docker-status:
+	@echo "NATS Server Status:"
+	@docker compose ps
+	@echo ""
+	@curl -s http://localhost:8222/varz 2>/dev/null | head -20 || echo "NATS not running"
+
 ## test-integration: Run integration tests (requires NATS)
-test-integration: docker-up
-	@sleep 2
+test-integration:
+	@echo "Starting NATS for integration tests..."
+	@docker compose up -d
+	@sleep 3
 	@echo "Running integration tests..."
-	@$(GOTEST) -v -race ./... || (make docker-down && exit 1)
-	@make docker-down
+	@$(GOTEST) -v -tags=integration -race ./... || (docker compose down -v && exit 1)
+	@docker compose down -v
+	@echo "Integration tests completed!"
+
+## test-integration-keep: Run integration tests without stopping NATS
+test-integration-keep:
+	@echo "Running integration tests (NATS must be running)..."
+	@$(GOTEST) -v -tags=integration -race ./...
 
 ## version: Show Go version
 version:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )
@@ -194,6 +195,38 @@ func (c *Client) Publish(subject string, data []byte) error {
 	return c.conn.Publish(subject, data)
 }
 
+// PublishMsg publishes a NATS message
+func (c *Client) PublishMsg(msg *nats.Msg) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return ErrConnectionFailed
+	}
+
+	return c.conn.PublishMsg(msg)
+}
+
+// PublishRequest publishes a message with a reply subject
+func (c *Client) PublishRequest(subject, reply string, data []byte) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return ErrConnectionFailed
+	}
+
+	return c.conn.PublishRequest(subject, reply, data)
+}
+
 // Subscribe creates a subscription to a subject
 func (c *Client) Subscribe(subject string, handler nats.MsgHandler) (*nats.Subscription, error) {
 	c.mu.RLock()
@@ -226,8 +259,8 @@ func (c *Client) QueueSubscribe(subject, queue string, handler nats.MsgHandler) 
 	return c.conn.QueueSubscribe(subject, queue, handler)
 }
 
-// Request sends a request and waits for a response
-func (c *Client) Request(subject string, data []byte, timeout context.Context) (*nats.Msg, error) {
+// ChanSubscribe creates a channel-based subscription
+func (c *Client) ChanSubscribe(subject string, ch chan *nats.Msg) (*nats.Subscription, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -239,14 +272,87 @@ func (c *Client) Request(subject string, data []byte, timeout context.Context) (
 		return nil, ErrConnectionFailed
 	}
 
-	// Get timeout duration from context
-	_, ok := timeout.Deadline()
-	if !ok {
-		// No deadline, use config timeout
-		return c.conn.Request(subject, data, c.config.Timeout)
+	return c.conn.ChanSubscribe(subject, ch)
+}
+
+// QueueChanSubscribe creates a channel-based queue group subscription
+func (c *Client) QueueChanSubscribe(subject, queue string, ch chan *nats.Msg) (*nats.Subscription, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return nil, ErrClientClosed
 	}
 
-	return c.conn.RequestWithContext(timeout, subject, data)
+	if c.conn == nil {
+		return nil, ErrConnectionFailed
+	}
+
+	return c.conn.QueueSubscribeSyncWithChan(subject, queue, ch)
+}
+
+// Request sends a request and waits for a response with timeout
+func (c *Client) Request(subject string, data []byte, timeout time.Duration) (*nats.Msg, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return nil, ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return nil, ErrConnectionFailed
+	}
+
+	return c.conn.Request(subject, data, timeout)
+}
+
+// RequestWithContext sends a request using context for cancellation/timeout
+func (c *Client) RequestWithContext(ctx context.Context, subject string, data []byte) (*nats.Msg, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return nil, ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return nil, ErrConnectionFailed
+	}
+
+	return c.conn.RequestWithContext(ctx, subject, data)
+}
+
+// RequestMsg sends a request message and waits for a response
+func (c *Client) RequestMsg(msg *nats.Msg, timeout time.Duration) (*nats.Msg, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return nil, ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return nil, ErrConnectionFailed
+	}
+
+	return c.conn.RequestMsg(msg, timeout)
+}
+
+// RequestMsgWithContext sends a request message using context for cancellation/timeout
+func (c *Client) RequestMsgWithContext(ctx context.Context, msg *nats.Msg) (*nats.Msg, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.closed {
+		return nil, ErrClientClosed
+	}
+
+	if c.conn == nil {
+		return nil, ErrConnectionFailed
+	}
+
+	return c.conn.RequestMsgWithContext(ctx, msg)
 }
 
 // Flush flushes any buffered messages

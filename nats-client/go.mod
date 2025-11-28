@@ -6,7 +6,10 @@ toolchain go1.24.4
 
 replace github.com/isimtekin/go-packages/env-util => ../env-util
 
-require github.com/nats-io/nats.go v1.47.0
+require (
+	github.com/isimtekin/go-packages/env-util v1.1.0
+	github.com/nats-io/nats.go v1.47.0
+)
 
 require (
 	github.com/klauspost/compress v1.18.0 // indirect

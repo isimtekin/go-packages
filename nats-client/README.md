@@ -10,12 +10,15 @@ A high-level NATS client wrapper for Go with clean API, automatic reconnection, 
 - **Simple API** - Clean, intuitive methods for pub/sub and request/reply patterns
 - **Automatic Reconnection** - Configurable reconnection with exponential backoff
 - **JetStream Support** - First-class support for NATS JetStream
+- **Stream Management** - Create, update, delete, and list JetStream streams
+- **Consumer Management** - Full CRUD operations for JetStream consumers
 - **TLS/SSL Support** - Optional encryption with certificate management
 - **Functional Options** - Clean configuration with `WithURL()`, `WithUsername()`, etc.
 - **Authentication** - Support for username/password and token authentication
 - **Environment Config** - Load configuration from environment variables
 - **Thread-Safe** - All operations are safe for concurrent use
 - **Connection Monitoring** - Built-in connection state callbacks and monitoring
+- **Docker Support** - Includes docker-compose for local development
 
 ## Installation
 
@@ -244,8 +247,14 @@ func (c *Client) QueueChanSubscribe(subject, queue string, ch chan *nats.Msg) (*
 // Request sends a request and waits for a reply
 func (c *Client) Request(subject string, data []byte, timeout time.Duration) (*nats.Msg, error)
 
+// RequestWithContext sends a request using context for cancellation/timeout
+func (c *Client) RequestWithContext(ctx context.Context, subject string, data []byte) (*nats.Msg, error)
+
 // RequestMsg sends a request message and waits for a reply
 func (c *Client) RequestMsg(msg *nats.Msg, timeout time.Duration) (*nats.Msg, error)
+
+// RequestMsgWithContext sends a request message using context
+func (c *Client) RequestMsgWithContext(ctx context.Context, msg *nats.Msg) (*nats.Msg, error)
 ```
 
 #### JetStream
@@ -253,6 +262,86 @@ func (c *Client) RequestMsg(msg *nats.Msg, timeout time.Duration) (*nats.Msg, er
 ```go
 // JetStream returns a JetStream context (if enabled)
 func (c *Client) JetStream() (nats.JetStreamContext, error)
+```
+
+#### JetStream Stream Management
+
+```go
+// CreateStream creates a new stream
+func (c *Client) CreateStream(ctx context.Context, config *StreamConfig) (*nats.StreamInfo, error)
+
+// UpdateStream updates an existing stream
+func (c *Client) UpdateStream(ctx context.Context, config *StreamConfig) (*nats.StreamInfo, error)
+
+// DeleteStream deletes a stream
+func (c *Client) DeleteStream(ctx context.Context, name string) error
+
+// GetStream returns stream information
+func (c *Client) GetStream(ctx context.Context, name string) (*nats.StreamInfo, error)
+
+// ListStreams returns all streams
+func (c *Client) ListStreams(ctx context.Context) ([]*nats.StreamInfo, error)
+
+// StreamNames returns stream names
+func (c *Client) StreamNames(ctx context.Context) ([]string, error)
+
+// PurgeStream removes all messages from a stream
+func (c *Client) PurgeStream(ctx context.Context, name string) error
+```
+
+#### JetStream Consumer Management
+
+```go
+// CreateConsumer creates a new consumer
+func (c *Client) CreateConsumer(ctx context.Context, stream string, config *ConsumerConfig) (*nats.ConsumerInfo, error)
+
+// UpdateConsumer updates an existing consumer
+func (c *Client) UpdateConsumer(ctx context.Context, stream string, config *ConsumerConfig) (*nats.ConsumerInfo, error)
+
+// DeleteConsumer deletes a consumer
+func (c *Client) DeleteConsumer(ctx context.Context, stream, consumer string) error
+
+// GetConsumer returns consumer information
+func (c *Client) GetConsumer(ctx context.Context, stream, consumer string) (*nats.ConsumerInfo, error)
+
+// ListConsumers returns all consumers for a stream
+func (c *Client) ListConsumers(ctx context.Context, stream string) ([]*nats.ConsumerInfo, error)
+```
+
+#### JetStream Publishing
+
+```go
+// PublishToStream publishes with acknowledgement
+func (c *Client) PublishToStream(ctx context.Context, subject string, data []byte) (*nats.PubAck, error)
+
+// PublishToStreamAsync publishes asynchronously
+func (c *Client) PublishToStreamAsync(subject string, data []byte) (nats.PubAckFuture, error)
+```
+
+#### JetStream Subscribing
+
+```go
+// PullSubscribe creates a pull-based subscription
+func (c *Client) PullSubscribe(subject, durable string, opts ...nats.SubOpt) (*nats.Subscription, error)
+
+// SubscribeToStream creates a push subscription to a stream
+func (c *Client) SubscribeToStream(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
+
+// QueueSubscribeToStream creates a queue subscription to a stream
+func (c *Client) QueueSubscribeToStream(subject, queue string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
+```
+
+#### JetStream Message Operations
+
+```go
+// GetMsg retrieves a message by sequence
+func (c *Client) GetMsg(ctx context.Context, stream string, seq uint64) (*nats.RawStreamMsg, error)
+
+// GetLastMsg retrieves the last message for a subject
+func (c *Client) GetLastMsg(ctx context.Context, stream, subject string) (*nats.RawStreamMsg, error)
+
+// DeleteMsg deletes a message by sequence
+func (c *Client) DeleteMsg(ctx context.Context, stream string, seq uint64) error
 ```
 
 ## Environment Variables
@@ -341,23 +430,70 @@ client, _ := natsclient.NewWithOptions(
     natsclient.WithURL("nats://localhost:4222"),
     natsclient.WithJetStream(true),
 )
+defer client.Close()
 
-js, _ := client.JetStream()
+ctx := context.Background()
 
-// Create stream
-js.AddStream(&nats.StreamConfig{
+// Create stream using the high-level API
+streamConfig := &natsclient.StreamConfig{
     Name:     "EVENTS",
     Subjects: []string{"events.>"},
-})
+    Storage:  natsclient.FileStorage,
+    Replicas: 1,
+}
+client.CreateStream(ctx, streamConfig)
 
-// Publish event
-js.Publish("events.order.created", []byte("order-123"))
+// Create a durable consumer
+consumerConfig := &natsclient.ConsumerConfig{
+    Durable:       "event-processor",
+    DeliverPolicy: natsclient.DeliverAll,
+    AckPolicy:     natsclient.AckExplicit,
+}
+client.CreateConsumer(ctx, "EVENTS", consumerConfig)
 
-// Subscribe to events
-js.Subscribe("events.>", func(msg *nats.Msg) {
+// Publish event with acknowledgement
+ack, _ := client.PublishToStream(ctx, "events.order.created", []byte("order-123"))
+fmt.Printf("Published: seq=%d\n", ack.Sequence)
+
+// Pull subscribe
+sub, _ := client.PullSubscribe("events.>", "event-processor", nats.BindStream("EVENTS"))
+msgs, _ := sub.Fetch(10, nats.MaxWait(5*time.Second))
+for _, msg := range msgs {
+    fmt.Printf("Received: %s\n", msg.Data)
     msg.Ack()
-    // Process event
+}
+```
+
+### Stream Management Example
+
+```go
+ctx := context.Background()
+
+// Create stream
+client.CreateStream(ctx, &natsclient.StreamConfig{
+    Name:         "ORDERS",
+    Subjects:     []string{"orders.>"},
+    Retention:    natsclient.WorkQueuePolicy,
+    MaxMsgs:      10000,
+    MaxAge:       24 * time.Hour,
+    Storage:      natsclient.FileStorage,
 })
+
+// List all streams
+streams, _ := client.ListStreams(ctx)
+for _, s := range streams {
+    fmt.Printf("Stream: %s, Messages: %d\n", s.Config.Name, s.State.Msgs)
+}
+
+// Get specific stream info
+info, _ := client.GetStream(ctx, "ORDERS")
+fmt.Printf("Stream has %d messages\n", info.State.Msgs)
+
+// Purge all messages
+client.PurgeStream(ctx, "ORDERS")
+
+// Delete stream
+client.DeleteStream(ctx, "ORDERS")
 ```
 
 ## Error Handling
@@ -386,6 +522,24 @@ if err != nil {
 - `ErrInvalidSubject` - Invalid subject name
 - `ErrSlowConsumer` - Consumer too slow, messages dropped
 
+**JetStream Errors:**
+- `ErrJetStreamNotEnabled` - JetStream not enabled in configuration
+- `ErrJetStreamNotInitialized` - JetStream context not initialized
+- `ErrStreamNotFound` - Stream not found
+- `ErrConsumerNotFound` - Consumer not found
+- `ErrMessageNotFound` - Message not found
+
+**Error Helper Functions:**
+```go
+if natsclient.IsJetStreamError(err) {
+    // Handle JetStream specific errors
+}
+
+if natsclient.IsNotFoundError(err) {
+    // Handle not found errors (stream, consumer, message)
+}
+```
+
 ## Connection Callbacks
 
 ```go
@@ -407,10 +561,34 @@ opts := []nats.Option{
 client, _ := natsclient.New(config)
 ```
 
-## Testing
+## Development
+
+### Running NATS Locally
+
+The package includes a `docker-compose.yml` for local development:
 
 ```bash
-# Run all tests
+# Start NATS with JetStream
+make docker-up
+
+# Check status
+make docker-status
+
+# View logs
+make docker-logs
+
+# Stop NATS
+make docker-down
+```
+
+NATS will be available at:
+- Client: `nats://localhost:4222`
+- Monitoring: `http://localhost:8222`
+
+### Testing
+
+```bash
+# Run unit tests
 go test -v ./...
 
 # Run with race detection
@@ -419,6 +597,12 @@ go test -v -race ./...
 # Run with coverage
 go test -v -cover -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
+
+# Run integration tests (requires NATS)
+make test-integration
+
+# Run integration tests with NATS already running
+make test-integration-keep
 ```
 
 ## Examples
