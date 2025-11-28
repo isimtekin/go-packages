@@ -1,11 +1,19 @@
 package mailsender
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// errorFunc is a type with a method that returns an error (for testing template execution errors)
+type errorFunc struct{}
+
+func (e errorFunc) Fail() (string, error) {
+	return "", errors.New("intentional error")
+}
 
 func TestRenderHTMLTemplate(t *testing.T) {
 	tests := []struct {
@@ -76,6 +84,15 @@ func TestRenderHTMLTemplate(t *testing.T) {
 			data:         nil,
 			wantContains: "<p>Static HTML</p>",
 			wantErr:      false,
+		},
+		{
+			name:        "template execution error - method returns error",
+			templateStr: "{{.Fail}}",
+			data:        errorFunc{},
+			wantErr:     true,
+			checkError: func(t *testing.T, err error) {
+				assert.Contains(t, err.Error(), "failed to execute HTML template")
+			},
 		},
 	}
 
@@ -168,6 +185,15 @@ The Team
 			data:         nil,
 			wantContains: "Hello World",
 			wantErr:      false,
+		},
+		{
+			name:        "template execution error - method returns error",
+			templateStr: "{{.Fail}}",
+			data:        errorFunc{},
+			wantErr:     true,
+			checkError: func(t *testing.T, err error) {
+				assert.Contains(t, err.Error(), "failed to execute text template")
+			},
 		},
 	}
 

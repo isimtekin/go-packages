@@ -310,21 +310,25 @@ func TestAsyncSender_RetryExhausted(t *testing.T) {
 
 func TestAsyncSender_QueueFull(t *testing.T) {
 	mock := newMockSender()
-	mock.sendDelay = 100 * time.Millisecond // Slow down processing
+	mock.sendDelay = 200 * time.Millisecond // Slow down processing
 
 	as := NewAsyncSender(mock,
 		WithWorkers(1),
-		WithQueueSize(2),
+		WithQueueSize(1), // Smaller queue to make it fill faster
 	)
 	defer as.Close()
 
-	// Fill the queue
+	// First message starts processing (worker picks it up)
 	err1 := as.SendAsync(context.Background(), &EmailMessage{
 		From: "sender@example.com", To: []string{"1@example.com"},
 		Subject: "1", PlainText: "1",
 	})
 	assert.NoError(t, err1)
 
+	// Give worker time to pick up first message
+	time.Sleep(10 * time.Millisecond)
+
+	// Second message fills the queue
 	err2 := as.SendAsync(context.Background(), &EmailMessage{
 		From: "sender@example.com", To: []string{"2@example.com"},
 		Subject: "2", PlainText: "2",
@@ -630,4 +634,250 @@ func TestAsyncSender_DefaultAsyncConfig(t *testing.T) {
 	assert.Equal(t, 0, config.RetryAttempts)
 	assert.Equal(t, time.Second, config.RetryDelay)
 	assert.Nil(t, config.EventHandlers)
+}
+
+func TestAsyncSender_SendAsyncBlocking_AfterClose(t *testing.T) {
+	mock := newMockSender()
+	as := NewAsyncSender(mock, WithWorkers(1), WithQueueSize(1))
+
+	// Close the sender first
+	as.Close()
+
+	// Try to send blocking - should immediately fail
+	err := as.SendAsyncBlocking(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "closed")
+}
+
+func TestAsyncSender_ProcessTask_RequeueContextDone(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+
+	var failureCalled int
+	var failureMu sync.Mutex
+
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithQueueSize(1), // Small queue to force blocking on requeue
+		WithRetry(3, 10*time.Millisecond),
+		WithOnFailure(func(msg *EmailMessage, err error) {
+			failureMu.Lock()
+			failureCalled++
+			failureMu.Unlock()
+		}),
+	)
+
+	// Fill the queue with a message that will fail and retry
+	_ = as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+
+	// Wait for first failure and retry attempt
+	time.Sleep(30 * time.Millisecond)
+
+	// Close sender while retry is in progress
+	as.Close()
+
+	// Wait for shutdown
+	time.Sleep(100 * time.Millisecond)
+
+	// Should have called OnFailure
+	failureMu.Lock()
+	assert.GreaterOrEqual(t, failureCalled, 1)
+	failureMu.Unlock()
+}
+
+func TestAsyncSender_ProcessTask_ClosedDuringRetry(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+
+	var failureCalled bool
+	var failureMu sync.Mutex
+
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithRetry(5, 50*time.Millisecond), // Longer retry delay
+		WithOnFailure(func(msg *EmailMessage, err error) {
+			failureMu.Lock()
+			failureCalled = true
+			failureMu.Unlock()
+		}),
+	)
+
+	// Send a message that will fail
+	_ = as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+
+	// Wait for first failure then close during retry delay
+	time.Sleep(20 * time.Millisecond)
+	as.Close()
+
+	// Wait for close to complete
+	time.Sleep(100 * time.Millisecond)
+
+	failureMu.Lock()
+	assert.True(t, failureCalled)
+	failureMu.Unlock()
+}
+
+func TestAsyncSender_NoEventHandlers(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+
+	// No event handlers configured
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithRetry(1, 5*time.Millisecond),
+	)
+	defer as.Close()
+
+	// Send a message that will fail
+	err := as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+	assert.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	stats := as.Stats()
+	assert.Equal(t, int64(1), stats.Failed)
+	assert.Equal(t, int64(1), stats.Retried)
+}
+
+func TestAsyncSender_SuccessWithNoHandlers(t *testing.T) {
+	mock := newMockSender()
+
+	// No event handlers configured
+	as := NewAsyncSender(mock, WithWorkers(1))
+	defer as.Close()
+
+	err := as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+	assert.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	stats := as.Stats()
+	assert.Equal(t, int64(1), stats.Sent)
+}
+
+func TestAsyncSender_RetryWithZeroDelay(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+	mock.failCount = 1 // Fail once then succeed
+
+	var retryCount int
+	var retryMu sync.Mutex
+
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithRetry(2, 0), // Zero delay
+		WithOnRetry(func(msg *EmailMessage, attempt int, err error) {
+			retryMu.Lock()
+			retryCount++
+			retryMu.Unlock()
+		}),
+	)
+	defer as.Close()
+
+	err := as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+	assert.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(100 * time.Millisecond)
+
+	retryMu.Lock()
+	assert.Equal(t, 1, retryCount)
+	retryMu.Unlock()
+
+	stats := as.Stats()
+	assert.Equal(t, int64(1), stats.Sent)
+}
+
+func TestAsyncSender_FailureWithNilOnRetryHandler(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+
+	var failureCalled bool
+	var failureMu sync.Mutex
+
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithRetry(2, 5*time.Millisecond),
+		WithOnFailure(func(msg *EmailMessage, err error) {
+			failureMu.Lock()
+			failureCalled = true
+			failureMu.Unlock()
+		}),
+		// Note: No OnRetry handler
+	)
+	defer as.Close()
+
+	err := as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+	assert.NoError(t, err)
+
+	// Wait for processing
+	time.Sleep(200 * time.Millisecond)
+
+	failureMu.Lock()
+	assert.True(t, failureCalled)
+	failureMu.Unlock()
+
+	stats := as.Stats()
+	assert.Equal(t, int64(1), stats.Failed)
+	assert.Equal(t, int64(2), stats.Retried)
+}
+
+func TestAsyncSender_CloseDuringRetryRequeue(t *testing.T) {
+	mock := newMockSender()
+	mock.shouldFail = true
+
+	var failureCalled int
+	var failureMu sync.Mutex
+
+	as := NewAsyncSender(mock,
+		WithWorkers(1),
+		WithQueueSize(1),
+		WithRetry(5, 5*time.Millisecond),
+		WithOnFailure(func(msg *EmailMessage, err error) {
+			failureMu.Lock()
+			failureCalled++
+			failureMu.Unlock()
+		}),
+	)
+
+	// Send message
+	_ = as.SendAsync(context.Background(), &EmailMessage{
+		From: "sender@example.com", To: []string{"recipient@example.com"},
+		Subject: "Test", PlainText: "Test",
+	})
+
+	// Wait for retry to start then close
+	time.Sleep(15 * time.Millisecond)
+	as.Close()
+
+	// Wait for close to complete
+	time.Sleep(50 * time.Millisecond)
+
+	failureMu.Lock()
+	assert.GreaterOrEqual(t, failureCalled, 1)
+	failureMu.Unlock()
 }

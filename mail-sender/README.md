@@ -24,7 +24,7 @@ A simple and flexible email sending library for Go with support for multiple ema
   - Real-time statistics (sent, failed, pending, retried)
   - Queue-based architecture with configurable buffer size
 - **Simple API**: Easy-to-use interface with sensible defaults
-- **Well Tested**: Comprehensive unit tests with >80% coverage
+- **Well Tested**: Comprehensive unit tests with >85% coverage
 
 ## Installation
 
@@ -891,7 +891,7 @@ For issues, questions, or contributions, please visit the [GitHub repository](ht
 - **Multi-Provider Support**: New `SenderManager` for managing multiple providers
 - **SMTP Provider**: Standard SMTP support with TLS/SSL and authentication
 - **AWS SES Provider**: Amazon Simple Email Service integration
-- Improved test coverage (>80%)
+- Improved test coverage (>85%)
 
 ### v0.1.0 (Initial Release)
 - SendGrid provider support

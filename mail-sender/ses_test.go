@@ -583,3 +583,201 @@ func TestMockableSESSender_Send_ValidationError(t *testing.T) {
 	err := sender.Send(context.Background(), message)
 	require.Error(t, err)
 }
+
+// Tests for testableSesSender
+func TestTestableSesSender_Send_Success(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.NotNil(t, mock.lastInput)
+	assert.Equal(t, "sender@example.com", *mock.lastInput.Source)
+}
+
+func TestTestableSesSender_Send_WithFromName(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		FromName:  "Sender Name",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, "Sender Name <sender@example.com>", *mock.lastInput.Source)
+}
+
+func TestTestableSesSender_Send_Error(t *testing.T) {
+	expectedErr := errors.New("SES error")
+	mock := &mockSESClient{
+		sendEmailFunc: func(ctx context.Context, params *ses.SendEmailInput, optFns ...func(*ses.Options)) (*ses.SendEmailOutput, error) {
+			return nil, expectedErr
+		},
+	}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrSendFailed)
+}
+
+func TestTestableSesSender_Send_ValidationError(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		Subject: "Test",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid message")
+}
+
+func TestTestableSesSender_Send_WithDefaults(t *testing.T) {
+	mock := &mockSESClient{}
+	cfg := &SESConfig{
+		Region:          "us-east-1",
+		DefaultFrom:     "default@example.com",
+		DefaultFromName: "Default Name",
+	}
+	sender := newTestableSesSender(mock, cfg)
+
+	message := &EmailMessage{
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, "Default Name <default@example.com>", *mock.lastInput.Source)
+}
+
+func TestTestableSesSender_Send_WithCcBcc(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		Cc:        []string{"cc@example.com"},
+		Bcc:       []string{"bcc@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"cc@example.com"}, mock.lastInput.Destination.CcAddresses)
+	assert.Equal(t, []string{"bcc@example.com"}, mock.lastInput.Destination.BccAddresses)
+}
+
+func TestTestableSesSender_Send_WithReplyTo(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		ReplyTo:   "reply@example.com",
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"reply@example.com"}, mock.lastInput.ReplyToAddresses)
+}
+
+func TestTestableSesSender_Send_WithConfigurationSet(t *testing.T) {
+	mock := &mockSESClient{}
+	cfg := &SESConfig{
+		Region:               "us-east-1",
+		ConfigurationSetName: "my-config-set",
+	}
+	sender := newTestableSesSender(mock, cfg)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, "my-config-set", *mock.lastInput.ConfigurationSetName)
+}
+
+func TestTestableSesSender_Send_HTMLOnly(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:    "sender@example.com",
+		To:      []string{"to@example.com"},
+		Subject: "Test",
+		HTML:    "<h1>Hello</h1>",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Nil(t, mock.lastInput.Message.Body.Text)
+	assert.NotNil(t, mock.lastInput.Message.Body.Html)
+	assert.Equal(t, "<h1>Hello</h1>", *mock.lastInput.Message.Body.Html.Data)
+}
+
+func TestTestableSesSender_Send_BothTextAndHTML(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	message := &EmailMessage{
+		From:      "sender@example.com",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello plain",
+		HTML:      "<h1>Hello HTML</h1>",
+	}
+
+	err := sender.Send(context.Background(), message)
+	require.NoError(t, err)
+	assert.Equal(t, "Hello plain", *mock.lastInput.Message.Body.Text.Data)
+	assert.Equal(t, "<h1>Hello HTML</h1>", *mock.lastInput.Message.Body.Html.Data)
+}
+
+func TestTestableSesSender_Close(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	err := sender.Close()
+	require.NoError(t, err)
+}
+
+func TestNewTestableSesSender_NilConfig(t *testing.T) {
+	mock := &mockSESClient{}
+	sender := newTestableSesSender(mock, nil)
+
+	assert.NotNil(t, sender)
+	assert.NotNil(t, sender.config)
+	assert.Equal(t, "us-east-1", sender.config.Region)
+}

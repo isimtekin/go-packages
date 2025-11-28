@@ -269,16 +269,109 @@ type SESClientAPI interface {
 	SendEmail(ctx context.Context, params *ses.SendEmailInput, optFns ...func(*ses.Options)) (*ses.SendEmailOutput, error)
 }
 
-// NewSESWithClient creates a new SES sender with a custom client.
-// This is useful for testing with mock clients.
-func NewSESWithClient(client SESClientAPI, cfg *SESConfig) *SESSender {
+// testableSesSender is used internally for testing with mock clients.
+type testableSesSender struct {
+	clientAPI       SESClientAPI
+	config          *SESConfig
+	defaultFrom     string
+	defaultFromName string
+}
+
+// newTestableSesSender creates a new testable SES sender with a mock client.
+func newTestableSesSender(client SESClientAPI, cfg *SESConfig) *testableSesSender {
 	if cfg == nil {
 		cfg = DefaultSESConfig()
 	}
-	return &SESSender{
-		client:          client.(*ses.Client),
+	return &testableSesSender{
+		clientAPI:       client,
 		config:          cfg,
 		defaultFrom:     cfg.DefaultFrom,
 		defaultFromName: cfg.DefaultFromName,
 	}
+}
+
+// Send sends an email using the mock SES client.
+func (s *testableSesSender) Send(ctx context.Context, message *EmailMessage) error {
+	// Apply defaults
+	if message.From == "" {
+		message.From = s.defaultFrom
+	}
+	if message.FromName == "" {
+		message.FromName = s.defaultFromName
+	}
+
+	// Validate message
+	if err := message.Validate(); err != nil {
+		return fmt.Errorf("invalid message: %w", err)
+	}
+
+	// Build source (from)
+	var source string
+	if message.FromName != "" {
+		source = fmt.Sprintf("%s <%s>", message.FromName, message.From)
+	} else {
+		source = message.From
+	}
+
+	// Build destination
+	destination := &types.Destination{
+		ToAddresses: message.To,
+	}
+	if len(message.Cc) > 0 {
+		destination.CcAddresses = message.Cc
+	}
+	if len(message.Bcc) > 0 {
+		destination.BccAddresses = message.Bcc
+	}
+
+	// Build message body
+	body := &types.Body{}
+	if message.PlainText != "" {
+		body.Text = &types.Content{
+			Data:    aws.String(message.PlainText),
+			Charset: aws.String("UTF-8"),
+		}
+	}
+	if message.HTML != "" {
+		body.Html = &types.Content{
+			Data:    aws.String(message.HTML),
+			Charset: aws.String("UTF-8"),
+		}
+	}
+
+	// Build input
+	input := &ses.SendEmailInput{
+		Source:      aws.String(source),
+		Destination: destination,
+		Message: &types.Message{
+			Subject: &types.Content{
+				Data:    aws.String(message.Subject),
+				Charset: aws.String("UTF-8"),
+			},
+			Body: body,
+		},
+	}
+
+	// Add reply-to if set
+	if message.ReplyTo != "" {
+		input.ReplyToAddresses = []string{message.ReplyTo}
+	}
+
+	// Add configuration set if configured
+	if s.config.ConfigurationSetName != "" {
+		input.ConfigurationSetName = aws.String(s.config.ConfigurationSetName)
+	}
+
+	// Send the email
+	_, err := s.clientAPI.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrSendFailed, err)
+	}
+
+	return nil
+}
+
+// Close closes the testable SES sender.
+func (s *testableSesSender) Close() error {
+	return nil
 }

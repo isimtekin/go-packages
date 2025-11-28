@@ -345,6 +345,57 @@ func TestSenderManager_SendDefault_NoDefault(t *testing.T) {
 	assert.Contains(t, err.Error(), "no default sender")
 }
 
+func TestSenderManager_SendDefault_WithDefaults(t *testing.T) {
+	manager := NewSenderManager()
+	manager.SetDefaultFrom("default@example.com", "Default Name")
+
+	var capturedMessage *EmailMessage
+	mock := newManagerMockSender()
+	mock.sendFunc = func(ctx context.Context, msg *EmailMessage) error {
+		capturedMessage = msg
+		return nil
+	}
+
+	err := manager.Register("test", mock)
+	require.NoError(t, err)
+
+	// Send without From - defaults should be applied
+	err = manager.SendDefault(context.Background(), &EmailMessage{
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "default@example.com", capturedMessage.From)
+	assert.Equal(t, "Default Name", capturedMessage.FromName)
+}
+
+func TestSenderManager_SendDefault_WithPartialDefaults(t *testing.T) {
+	manager := NewSenderManager()
+	manager.SetDefaultFrom("default@example.com", "Default Name")
+
+	var capturedMessage *EmailMessage
+	mock := newManagerMockSender()
+	mock.sendFunc = func(ctx context.Context, msg *EmailMessage) error {
+		capturedMessage = msg
+		return nil
+	}
+
+	err := manager.Register("test", mock)
+	require.NoError(t, err)
+
+	// Send with From but without FromName - only FromName default should apply
+	err = manager.SendDefault(context.Background(), &EmailMessage{
+		From:      "custom@example.com",
+		To:        []string{"to@example.com"},
+		Subject:   "Test",
+		PlainText: "Hello",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "custom@example.com", capturedMessage.From)
+	assert.Equal(t, "Default Name", capturedMessage.FromName)
+}
+
 func TestSenderManager_List(t *testing.T) {
 	manager := NewSenderManager()
 

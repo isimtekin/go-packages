@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider selection at runtime via `manager.Send(ctx, "provider-name", message)`
 
 ### Changed
-- Updated test coverage to 83.7%
+- Updated test coverage to 85.8%
 
 ## [0.1.1] - 2024-01-15
 
