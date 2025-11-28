@@ -48,11 +48,27 @@ fi
 echo "Updating $PACKAGE/CHANGELOG.md..."
 if [ -f "$PACKAGE/CHANGELOG.md" ]; then
     TODAY=$(date +%Y-%m-%d)
-    # Replace [Unreleased] with new version and add new [Unreleased] section
-    sed -i.bak "s/## \[Unreleased\]/## [Unreleased]\n\n## [${VERSION}] - ${TODAY}/" "$PACKAGE/CHANGELOG.md"
-    # Also update any placeholder dates like XXXX-XX-XX for this version
-    sed -i.bak "s/\[${VERSION}\] - [0-9X]\{4\}-[0-9X]\{2\}-[0-9X]\{2\}/[${VERSION}] - ${TODAY}/" "$PACKAGE/CHANGELOG.md"
-    rm -f "$PACKAGE/CHANGELOG.md.bak"
+    # Use awk to properly update the changelog:
+    # - Replace "## [Unreleased]" with "## [Unreleased]\n\n## [VERSION] - DATE"
+    # - But only if [VERSION] doesn't already exist
+    awk -v ver="${VERSION}" -v today="${TODAY}" '
+    BEGIN { found_version = 0; printed_new = 0 }
+    /^## \[/ && $0 ~ "\\[" ver "\\]" { found_version = 1 }
+    /^## \[Unreleased\]/ {
+        print $0
+        print ""
+        if (!found_version && !printed_new) {
+            print "## [" ver "] - " today
+            printed_new = 1
+        }
+        next
+    }
+    # Update placeholder dates for this version
+    /^## \[/ && $0 ~ "\\[" ver "\\].*[0-9X]{4}-[0-9X]{2}-[0-9X]{2}" {
+        sub(/[0-9X]{4}-[0-9X]{2}-[0-9X]{2}/, today)
+    }
+    { print }
+    ' "$PACKAGE/CHANGELOG.md" > "$PACKAGE/CHANGELOG.md.tmp" && mv "$PACKAGE/CHANGELOG.md.tmp" "$PACKAGE/CHANGELOG.md"
 fi
 
 # Update root README.md package list

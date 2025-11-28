@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2025-11-28
 
-## [0.2.0] - 2025-11-28
-
 ### Added
 - **SenderManager**: New component for managing multiple email providers simultaneously
 - **SMTP Provider**: Standard SMTP support with TLS/SSL encryption and authentication
@@ -20,12 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated test coverage to 83.7%
 
-## [0.1.1] - 2024-XX-XX
+## [0.1.1] - 2024-01-15
 
 ### Fixed
 - Minor bug fixes and improvements
 
-## [0.1.0] - 2024-XX-XX
+## [0.1.0] - 2024-01-10
 
 ### Added
 - Initial release
