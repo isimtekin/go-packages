@@ -28,7 +28,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 
 ```bash
 # Installation
-go get github.com/isimtekin/go-packages/mongo-client@v0.1.1
+go get github.com/isimtekin/go-packages/mongo-client@v0.2.0
 ```
 
 ## 📋 Basic Usage
