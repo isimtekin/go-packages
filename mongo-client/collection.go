@@ -20,15 +20,28 @@ type Collection struct {
 // FindOneResult wraps the result of a FindOne operation
 type FindOneResult struct {
 	result *mongo.SingleResult
+	err    error // pre-operation error (e.g., from hooks)
 }
 
 // Decode decodes the result into the provided value
 func (r *FindOneResult) Decode(v interface{}) error {
+	if r.err != nil {
+		return r.err
+	}
+	if r.result == nil {
+		return mongo.ErrNoDocuments
+	}
 	return r.result.Decode(v)
 }
 
 // Err returns any error from the operation
 func (r *FindOneResult) Err() error {
+	if r.err != nil {
+		return r.err
+	}
+	if r.result == nil {
+		return mongo.ErrNoDocuments
+	}
 	return r.result.Err()
 }
 

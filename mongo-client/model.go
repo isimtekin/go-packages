@@ -95,7 +95,26 @@ func (m *Model) InsertOne(ctx context.Context, document interface{}, opts ...*op
 		applyTimestamps(document, true)
 	}
 
-	return m.collection.InsertOne(ctx, document, opts...)
+	// Execute pre-insert hooks
+	hc := &HookContext{
+		Operation: OpInsert,
+		Document:  document,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpInsert, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.InsertOne(ctx, document, opts...)
+
+	// Execute post-insert hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpInsert, hc)
+
+	return result, err
 }
 
 // InsertMany inserts multiple documents with schema validation
@@ -121,27 +140,116 @@ func (m *Model) InsertMany(ctx context.Context, documents []interface{}, opts ..
 		}
 	}
 
-	return m.collection.InsertMany(ctx, documents, opts...)
+	// Execute pre-insertMany hooks
+	hc := &HookContext{
+		Operation: OpInsertMany,
+		Documents: documents,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpInsertMany, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.InsertMany(ctx, documents, opts...)
+
+	// Execute post-insertMany hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpInsertMany, hc)
+
+	return result, err
 }
 
 // FindOne finds a single document matching the filter
 func (m *Model) FindOne(ctx context.Context, filter interface{}, opts ...*options.FindOneOptions) *FindOneResult {
-	return m.collection.FindOne(ctx, filter, opts...)
+	// Convert filter to M for hooks
+	filterM := toM(filter)
+
+	// Execute pre-findOne hooks
+	hc := &HookContext{
+		Operation: OpFindOne,
+		Filter:    filterM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpFindOne, hc); err != nil {
+		// Return a result that will error on decode
+		return &FindOneResult{err: err}
+	}
+
+	// Execute the operation
+	result := m.collection.FindOne(ctx, filter, opts...)
+
+	// Execute post-findOne hooks (async by default)
+	hc.Result = result
+	_ = m.schema.executePostHooks(ctx, OpFindOne, hc)
+
+	return result
 }
 
 // FindOneByID finds a document by its ID
 func (m *Model) FindOneByID(ctx context.Context, id interface{}, opts ...*options.FindOneOptions) *FindOneResult {
-	return m.collection.FindOneByID(ctx, id, opts...)
+	objID, err := toObjectID(id)
+	if err != nil {
+		return &FindOneResult{err: err}
+	}
+	return m.FindOne(ctx, bson.M{"_id": objID}, opts...)
 }
 
 // Find finds all documents matching the filter
 func (m *Model) Find(ctx context.Context, filter interface{}, opts ...*options.FindOptions) (*mongo.Cursor, error) {
-	return m.collection.Find(ctx, filter, opts...)
+	// Convert filter to M for hooks
+	filterM := toM(filter)
+
+	// Execute pre-find hooks
+	hc := &HookContext{
+		Operation: OpFind,
+		Filter:    filterM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpFind, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	cursor, err := m.collection.Find(ctx, filter, opts...)
+
+	// Execute post-find hooks
+	hc.Result = cursor
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpFind, hc)
+
+	return cursor, err
 }
 
 // FindAll finds all documents and decodes them into the results slice
 func (m *Model) FindAll(ctx context.Context, filter interface{}, results interface{}, opts ...*options.FindOptions) error {
-	return m.collection.FindAll(ctx, filter, results, opts...)
+	// Convert filter to M for hooks
+	filterM := toM(filter)
+
+	// Execute pre-find hooks
+	hc := &HookContext{
+		Operation: OpFind,
+		Filter:    filterM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpFind, hc); err != nil {
+		return err
+	}
+
+	// Execute the operation
+	err := m.collection.FindAll(ctx, filter, results, opts...)
+
+	// Execute post-find hooks
+	hc.Result = results
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpFind, hc)
+
+	return err
 }
 
 // UpdateOne updates a single document with schema validation
@@ -157,7 +265,31 @@ func (m *Model) UpdateOne(ctx context.Context, filter interface{}, update interf
 		update = m.addUpdatedAtToUpdate(update)
 	}
 
-	return m.collection.UpdateOne(ctx, filter, update, opts...)
+	// Convert to M for hooks
+	filterM := toM(filter)
+	updateM := toM(update)
+
+	// Execute pre-update hooks
+	hc := &HookContext{
+		Operation: OpUpdate,
+		Filter:    filterM,
+		Update:    updateM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpUpdate, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.UpdateOne(ctx, filter, update, opts...)
+
+	// Execute post-update hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpUpdate, hc)
+
+	return result, err
 }
 
 // UpdateOneByID updates a document by its ID with schema validation
@@ -182,7 +314,31 @@ func (m *Model) UpdateMany(ctx context.Context, filter interface{}, update inter
 		update = m.addUpdatedAtToUpdate(update)
 	}
 
-	return m.collection.UpdateMany(ctx, filter, update, opts...)
+	// Convert to M for hooks
+	filterM := toM(filter)
+	updateM := toM(update)
+
+	// Execute pre-updateMany hooks
+	hc := &HookContext{
+		Operation: OpUpdateMany,
+		Filter:    filterM,
+		Update:    updateM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpUpdateMany, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.UpdateMany(ctx, filter, update, opts...)
+
+	// Execute post-updateMany hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpUpdateMany, hc)
+
+	return result, err
 }
 
 // ReplaceOne replaces a document with schema validation
@@ -216,7 +372,29 @@ func (m *Model) DeleteOne(ctx context.Context, filter interface{}, opts ...*opti
 		return nil, ErrEmptyFilter
 	}
 
-	return m.collection.DeleteOne(ctx, filter, opts...)
+	// Convert to M for hooks
+	filterM := toM(filter)
+
+	// Execute pre-delete hooks
+	hc := &HookContext{
+		Operation: OpDelete,
+		Filter:    filterM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpDelete, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.DeleteOne(ctx, filter, opts...)
+
+	// Execute post-delete hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpDelete, hc)
+
+	return result, err
 }
 
 // DeleteOneByID deletes a document by its ID
@@ -226,7 +404,7 @@ func (m *Model) DeleteOneByID(ctx context.Context, id interface{}, opts ...*opti
 		return nil, err
 	}
 
-	return m.collection.DeleteOne(ctx, bson.M{"_id": objID}, opts...)
+	return m.DeleteOne(ctx, bson.M{"_id": objID}, opts...)
 }
 
 // DeleteMany deletes all documents matching the filter
@@ -241,7 +419,29 @@ func (m *Model) DeleteMany(ctx context.Context, filter interface{}, opts ...*opt
 		return nil, ErrEmptyFilter
 	}
 
-	return m.collection.DeleteMany(ctx, filter, opts...)
+	// Convert to M for hooks
+	filterM := toM(filter)
+
+	// Execute pre-deleteMany hooks
+	hc := &HookContext{
+		Operation: OpDeleteMany,
+		Filter:    filterM,
+		Schema:    m.schema,
+		Model:     m,
+	}
+	if err := m.schema.executePreHooks(ctx, OpDeleteMany, hc); err != nil {
+		return nil, err
+	}
+
+	// Execute the operation
+	result, err := m.collection.DeleteMany(ctx, filter, opts...)
+
+	// Execute post-deleteMany hooks
+	hc.Result = result
+	hc.Error = err
+	_ = m.schema.executePostHooks(ctx, OpDeleteMany, hc)
+
+	return result, err
 }
 
 // CountDocuments counts documents matching the filter
@@ -408,5 +608,24 @@ func toObjectID(id interface{}) (primitive.ObjectID, error) {
 		return primitive.ObjectIDFromHex(v)
 	default:
 		return primitive.NilObjectID, fmt.Errorf("%w: %T", ErrInvalidID, id)
+	}
+}
+
+// toM converts various types to M (bson.M alias) for hook context
+func toM(v interface{}) M {
+	if v == nil {
+		return nil
+	}
+	switch val := v.(type) {
+	case M:
+		return val
+	case map[string]interface{}:
+		return M(val)
+	default:
+		// Try to convert struct to map
+		if m, ok := toMapInterface(v); ok {
+			return M(m)
+		}
+		return nil
 	}
 }

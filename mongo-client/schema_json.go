@@ -14,6 +14,7 @@ type JSONSchema struct {
 	Fields     map[string]JSONField `json:"fields"`               // Field definitions
 	Indexes    []JSONIndex          `json:"indexes,omitempty"`    // Index definitions
 	Transform  *JSONTransform       `json:"transform,omitempty"`  // Transform options
+	Hooks      *JSONHooks           `json:"hooks,omitempty"`      // Pre/Post operation hooks
 }
 
 // JSONTransform represents transform options in JSON format
@@ -46,6 +47,32 @@ type JSONIndex struct {
 	Keys   map[string]int `json:"keys"`             // Field:order (1=asc, -1=desc)
 	Unique bool           `json:"unique,omitempty"` // Unique index
 	Name   string         `json:"name,omitempty"`   // Index name
+}
+
+// JSONHooks represents hook definitions in JSON format
+type JSONHooks struct {
+	Pre  map[string][]JSONHook `json:"pre,omitempty"`  // Pre-operation hooks by operation name
+	Post map[string][]JSONHook `json:"post,omitempty"` // Post-operation hooks by operation name
+}
+
+// JSONHook represents a single hook definition in JSON format
+type JSONHook struct {
+	// Name is the registered hook function name (required)
+	Name string `json:"name"`
+
+	// When is a condition that must be true for the hook to run
+	When *Condition `json:"when,omitempty"`
+
+	// Async determines if the hook runs asynchronously
+	// Default: false for pre hooks, true for post hooks
+	Async *bool `json:"async,omitempty"`
+
+	// ContinueOnError determines behavior when the hook returns an error
+	// Default: false for pre hooks, true for post hooks
+	ContinueOnError *bool `json:"continueOnError,omitempty"`
+
+	// Priority determines execution order (lower runs first, default: 0)
+	Priority int `json:"priority,omitempty"`
 }
 
 // SchemaFromJSON converts a JSONSchema to a Schema
@@ -108,6 +135,57 @@ func SchemaFromJSON(js *JSONSchema) (*Schema, error) {
 			Omit:      js.Transform.Omit,
 			Pick:      js.Transform.Pick,
 			OmitEmpty: js.Transform.OmitEmpty,
+		}
+	}
+
+	// Convert hooks
+	if js.Hooks != nil {
+		// Process pre hooks
+		for op, hooks := range js.Hooks.Pre {
+			for _, jh := range hooks {
+				hookFn, ok := GetRegisteredHook(jh.Name)
+				if !ok {
+					return nil, fmt.Errorf("hook '%s' not found in registry for pre:%s", jh.Name, op)
+				}
+
+				opts := HookOptions{
+					Name:            jh.Name,
+					Async:           jh.Async,
+					ContinueOnError: jh.ContinueOnError,
+					Priority:        jh.Priority,
+				}
+
+				// Convert condition
+				if jh.When != nil {
+					opts.When = ConditionFromJSON(jh.When)
+				}
+
+				schema.Pre(op, hookFn, opts)
+			}
+		}
+
+		// Process post hooks
+		for op, hooks := range js.Hooks.Post {
+			for _, jh := range hooks {
+				hookFn, ok := GetRegisteredHook(jh.Name)
+				if !ok {
+					return nil, fmt.Errorf("hook '%s' not found in registry for post:%s", jh.Name, op)
+				}
+
+				opts := HookOptions{
+					Name:            jh.Name,
+					Async:           jh.Async,
+					ContinueOnError: jh.ContinueOnError,
+					Priority:        jh.Priority,
+				}
+
+				// Convert condition
+				if jh.When != nil {
+					opts.When = ConditionFromJSON(jh.When)
+				}
+
+				schema.Post(op, hookFn, opts)
+			}
 		}
 	}
 

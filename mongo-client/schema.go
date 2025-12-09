@@ -58,6 +58,7 @@ type Schema struct {
 	BeforeValidate  func(doc interface{}) error
 	AfterValidate   func(doc interface{}) error
 	TransformOpts   *TransformOptions // transform options for ToJSON/ToObject
+	hooks           *hookStore        // pre/post operation hooks
 }
 
 // NewSchema creates a new schema
@@ -67,6 +68,7 @@ func NewSchema() *Schema {
 		Timestamps: true, // default to true like Mongoose
 		Strict:     true, // default to strict mode
 		fieldOrder: make([]string, 0),
+		hooks:      newHookStore(),
 	}
 }
 

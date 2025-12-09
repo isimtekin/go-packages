@@ -17,6 +17,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 - 📝 **Model Pattern** - Schema-bound models that enforce validation on all operations
 - 📋 **JSON Schema Support** - Define schemas in JSON format and load from files
 - 🔄 **Transform Support** - Convert documents for API responses (rename _id to id, omit fields, snake_case)
+- 🪝 **Pre/Post Hooks** - Middleware for operations (like Mongoose) with conditions, async support, and priority
 - 🔧 **Functional options** - Clean configuration with functional options pattern
 - 🛠️ **Query builders** - Helper functions for building MongoDB queries
 - 📋 **Pagination support** - Built-in pagination helpers
@@ -548,6 +549,254 @@ result := schema.Transform(user)
 
 ---
 
+## 🪝 Pre/Post Hooks (Middleware)
+
+Hooks allow you to run code before and after database operations. Similar to Mongoose middleware, hooks are useful for:
+- Password hashing before insert
+- Audit logging
+- Cache invalidation
+- Data transformation
+- Validation
+
+### Basic Usage
+
+```go
+schema := mongoclient.NewSchema().
+    Field("email", mongoclient.TypeString).
+    Field("password", mongoclient.TypeString).
+
+    // Pre-insert: hash password
+    Pre("insert", func(ctx context.Context, hc *mongoclient.HookContext) error {
+        if doc, ok := hc.Document.(map[string]interface{}); ok {
+            if pwd, ok := doc["password"].(string); ok {
+                hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), 14)
+                doc["password"] = string(hashed)
+            }
+        }
+        return nil
+    }).
+
+    // Post-insert: send welcome email (async by default)
+    Post("insert", func(ctx context.Context, hc *mongoclient.HookContext) error {
+        // Send email, update cache, etc.
+        return nil
+    })
+```
+
+### Supported Operations
+
+| Operation | Description |
+|-----------|-------------|
+| `insert` | Single document insert |
+| `insertMany` | Multiple document insert |
+| `update` | Single document update |
+| `updateMany` | Multiple document update |
+| `delete` | Single document delete |
+| `deleteMany` | Multiple document delete |
+| `find` | Find documents |
+| `findOne` | Find single document |
+| `*` | Wildcard - matches all operations |
+
+### Hook Options
+
+```go
+type HookOptions struct {
+    ContinueOnError *bool  // Continue if hook fails (default: false for pre, true for post)
+    Async           *bool  // Run asynchronously (default: false for pre, true for post)
+    Priority        int    // Lower runs first (default: 0, FIFO for same priority)
+    Name            string // For debugging/logging
+}
+
+// Example with options
+schema.Post("insert", sendEmailHook, mongoclient.HookOptions{
+    Async:           mongoclient.BoolPtr(true),
+    ContinueOnError: mongoclient.BoolPtr(true),
+    Priority:        10,
+    Name:            "sendWelcomeEmail",
+})
+```
+
+### Conditional Hooks
+
+Run hooks only when certain conditions are met:
+
+```go
+// Only hash password if it's being updated
+schema.PreWhen("update", hashPasswordHook, func(ctx context.Context, hc *mongoclient.HookContext) bool {
+    if set, ok := hc.Update["$set"].(mongoclient.M); ok {
+        _, hasPassword := set["password"]
+        return hasPassword
+    }
+    return false
+})
+```
+
+### Wildcard Hooks
+
+Catch all operations with `*`:
+
+```go
+// Audit log all operations
+schema.Pre("*", func(ctx context.Context, hc *mongoclient.HookContext) error {
+    log.Printf("[AUDIT] %s on %s", hc.Operation, hc.Schema.CollectionName)
+    return nil
+})
+```
+
+### HookContext
+
+The `HookContext` provides access to operation details:
+
+```go
+type HookContext struct {
+    Operation string           // "insert", "update", "delete", etc.
+    Document  interface{}      // Document being inserted
+    Documents []interface{}    // Documents for insertMany
+    Filter    M                // Query filter
+    Update    M                // Update document
+    Result    interface{}      // Operation result (post hooks only)
+    Error     error            // Operation error (post hooks only)
+    Schema    *Schema
+    Model     *Model
+    Extra     map[string]interface{} // Pass data between hooks
+}
+
+// Pass data between hooks
+hc.Set("validated", true)
+value, ok := hc.Get("validated")
+```
+
+### Built-in Hooks
+
+Several hooks are pre-registered:
+
+| Hook Name | Description |
+|-----------|-------------|
+| `setTimestamps` | Set createdAt/updatedAt |
+| `generateSlug` | Generate URL-friendly slug from title/name |
+| `trimStrings` | Trim whitespace from all string fields |
+| `toLowerCase` | Convert email to lowercase |
+| `logOperation` | Log operation details |
+
+```go
+// Use built-in hook
+schema.Pre("insert", mongoclient.GenerateSlugHook)
+
+// Or reference by name in JSON schema
+```
+
+### JSON Schema with Hooks
+
+Define hooks in JSON schema files:
+
+```json
+{
+  "name": "users",
+  "fields": {
+    "email": { "type": "string", "required": true },
+    "password": { "type": "string" }
+  },
+  "hooks": {
+    "pre": {
+      "insert": [
+        { "name": "trimStrings" },
+        { "name": "toLowerCase" },
+        {
+          "name": "customValidation",
+          "when": { "field": "role", "eq": "admin" },
+          "priority": 1
+        }
+      ],
+      "update": [
+        {
+          "name": "hashPassword",
+          "when": { "path": "$set.password", "exists": true }
+        }
+      ]
+    },
+    "post": {
+      "insert": [
+        { "name": "logOperation", "async": true }
+      ]
+    }
+  }
+}
+```
+
+### Condition Expressions (JSON)
+
+```json
+// Field exists
+{ "field": "password", "exists": true }
+
+// Equality
+{ "field": "role", "eq": "admin" }
+{ "field": "age", "ne": 0 }
+
+// Comparison
+{ "field": "age", "gt": 18 }
+{ "field": "age", "gte": 18 }
+{ "field": "age", "lt": 65 }
+{ "field": "age", "lte": 65 }
+
+// List membership
+{ "field": "role", "in": ["admin", "moderator"] }
+{ "field": "status", "nin": ["banned", "suspended"] }
+
+// Regex match
+{ "field": "email", "matches": ".*@company\\.com$" }
+
+// Not empty
+{ "field": "name", "notEmpty": true }
+
+// Update path check
+{ "path": "$set.password", "exists": true }
+
+// Logical operators
+{ "and": [{ "field": "role", "eq": "admin" }, { "field": "active", "eq": true }] }
+{ "or": [{ "field": "role", "eq": "admin" }, { "field": "role", "eq": "moderator" }] }
+{ "not": { "field": "role", "eq": "banned" } }
+```
+
+### Custom Hook Registration
+
+Register custom hooks for use in JSON schemas:
+
+```go
+// Register a custom hook
+mongoclient.RegisterHook("myCustomHook", func(ctx context.Context, hc *mongoclient.HookContext) error {
+    // Custom logic
+    return nil
+})
+
+// List all registered hooks
+hooks := mongoclient.ListRegisteredHooks()
+
+// Unregister
+mongoclient.UnregisterHook("myCustomHook")
+```
+
+### Error Handling
+
+```go
+// Pre hooks: error stops the operation
+schema.Pre("insert", func(ctx context.Context, hc *mongoclient.HookContext) error {
+    return errors.New("validation failed") // Operation will not proceed
+})
+
+// Continue on error
+schema.Pre("insert", hook, mongoclient.HookOptions{
+    ContinueOnError: mongoclient.BoolPtr(true), // Log error but continue
+})
+
+// Custom error logger
+mongoclient.SetHookErrorLogger(func(name string, phase mongoclient.HookPhase, op string, err error) {
+    log.Printf("[HOOK ERROR] %s %s:%s - %v", phase, op, name, err)
+})
+```
+
+---
+
 ## 📝 Models Without Schema (Direct Collection Access)
 
 For simple cases or when you want to manage validation yourself, you can still use collections directly:
@@ -772,6 +1021,7 @@ See [examples/](./examples/) directory:
 - **[Basic Example](./examples/basic/main.go)** - CRUD, queries, aggregations
 - **[Environment Config](./examples/env-config/main.go)** - Configuration patterns
 - **[Transform Example](./examples/transform/main.go)** - Transform documents for API responses
+- **[Hooks Example](./examples/hooks/main.go)** - Pre/post operation hooks and middleware
 
 ---
 
