@@ -57,6 +57,7 @@ type Schema struct {
 	fieldOrder      []string // to maintain field order
 	BeforeValidate  func(doc interface{}) error
 	AfterValidate   func(doc interface{}) error
+	TransformOpts   *TransformOptions // transform options for ToJSON/ToObject
 }
 
 // NewSchema creates a new schema

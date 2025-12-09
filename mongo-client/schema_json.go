@@ -13,6 +13,16 @@ type JSONSchema struct {
 	Strict     *bool                `json:"strict,omitempty"`     // Strict mode (default: true)
 	Fields     map[string]JSONField `json:"fields"`               // Field definitions
 	Indexes    []JSONIndex          `json:"indexes,omitempty"`    // Index definitions
+	Transform  *JSONTransform       `json:"transform,omitempty"`  // Transform options
+}
+
+// JSONTransform represents transform options in JSON format
+type JSONTransform struct {
+	RenameID  bool              `json:"renameId,omitempty"`  // _id -> id
+	Rename    map[string]string `json:"rename,omitempty"`    // Field renames
+	Omit      []string          `json:"omit,omitempty"`      // Fields to exclude
+	Pick      []string          `json:"pick,omitempty"`      // Fields to include
+	OmitEmpty bool              `json:"omitEmpty,omitempty"` // Remove empty fields
 }
 
 // JSONField represents a field definition in JSON format
@@ -90,6 +100,17 @@ func SchemaFromJSON(js *JSONSchema) (*Schema, error) {
 		schema.AddIndex(keys, ji.Unique, ji.Name)
 	}
 
+	// Convert transform options
+	if js.Transform != nil {
+		schema.TransformOpts = &TransformOptions{
+			RenameID:  js.Transform.RenameID,
+			Rename:    js.Transform.Rename,
+			Omit:      js.Transform.Omit,
+			Pick:      js.Transform.Pick,
+			OmitEmpty: js.Transform.OmitEmpty,
+		}
+	}
+
 	return schema, nil
 }
 
@@ -140,6 +161,17 @@ func SchemaToJSON(s *Schema) *JSONSchema {
 	if !s.Strict {
 		f := false
 		js.Strict = &f
+	}
+
+	// Convert transform options
+	if s.TransformOpts != nil {
+		js.Transform = &JSONTransform{
+			RenameID:  s.TransformOpts.RenameID,
+			Rename:    s.TransformOpts.Rename,
+			Omit:      s.TransformOpts.Omit,
+			Pick:      s.TransformOpts.Pick,
+			OmitEmpty: s.TransformOpts.OmitEmpty,
+		}
 	}
 
 	// Convert fields

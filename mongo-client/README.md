@@ -16,6 +16,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 - 🔐 **Schema Validation** - Mongoose-like schema with required fields, type checking, and custom validators
 - 📝 **Model Pattern** - Schema-bound models that enforce validation on all operations
 - 📋 **JSON Schema Support** - Define schemas in JSON format and load from files
+- 🔄 **Transform Support** - Convert documents for API responses (rename _id to id, omit fields, snake_case)
 - 🔧 **Functional options** - Clean configuration with functional options pattern
 - 🛠️ **Query builders** - Helper functions for building MongoDB queries
 - 📋 **Pagination support** - Built-in pagination helpers
@@ -393,6 +394,160 @@ jsonBytes, err := mongoclient.SchemaToJSONBytes(schema)
 
 ---
 
+## 🔄 Transform (toJSON / toObject)
+
+Transform documents for API responses - rename `_id` to `id`, omit sensitive fields, convert to snake_case, and more. Similar to Mongoose's `toJSON` and `toObject` options.
+
+### Basic Usage
+
+```go
+// Define schema with transform options
+schema := mongoclient.NewSchema().
+    Field("email", mongoclient.TypeString).
+    Field("name", mongoclient.TypeString).
+    Field("password", mongoclient.TypeString).
+    WithTransform(mongoclient.TransformOptions{
+        RenameID: true,                           // _id → id
+        Omit:     []string{"password", "apiKey"}, // Remove sensitive fields
+    })
+
+// Transform a document
+user := &User{ID: someObjectID, Email: "john@example.com", Password: "secret"}
+result := schema.Transform(user)
+// Result: {"id": "507f1f77bcf86cd799439011", "email": "john@example.com", "name": "John"}
+// Note: password is omitted, _id is renamed to id
+
+// Get as JSON
+jsonBytes, _ := schema.ToJSON(user)
+jsonString, _ := schema.ToJSONString(user)
+
+// Transform multiple documents
+users := []User{user1, user2, user3}
+results := schema.TransformMany(users)
+jsonArray, _ := schema.ToJSONMany(users)
+```
+
+### Transform Options
+
+```go
+type TransformOptions struct {
+    RenameID  bool                    // Rename _id to id
+    Rename    map[string]string       // Rename fields (e.g., createdAt → created_at)
+    Omit      []string                // Fields to exclude from output
+    Pick      []string                // Only include these fields (whitelist)
+    OmitEmpty bool                    // Remove fields with zero/empty values
+    Custom    func(map[string]interface{}) map[string]interface{} // Custom transform function
+}
+```
+
+### Examples
+
+**Rename Fields (camelCase → snake_case):**
+
+```go
+schema := mongoclient.NewSchema().
+    Field("email", mongoclient.TypeString).
+    Field("firstName", mongoclient.TypeString).
+    WithTransform(mongoclient.TransformOptions{
+        RenameID: true,
+        Rename: map[string]string{
+            "firstName": "first_name",
+            "lastName":  "last_name",
+            "createdAt": "created_at",
+            "updatedAt": "updated_at",
+        },
+    })
+```
+
+**Pick Specific Fields:**
+
+```go
+schema := mongoclient.NewSchema().
+    Field("email", mongoclient.TypeString).
+    Field("name", mongoclient.TypeString).
+    WithTransform(mongoclient.TransformOptions{
+        RenameID: true,
+        Pick:     []string{"id", "email", "name"}, // Only these fields
+    })
+```
+
+**Custom Transform Function:**
+
+```go
+schema := mongoclient.NewSchema().
+    Field("email", mongoclient.TypeString).
+    Field("name", mongoclient.TypeString).
+    WithTransform(mongoclient.TransformOptions{
+        RenameID: true,
+        Custom: func(doc map[string]interface{}) map[string]interface{} {
+            // Add computed fields
+            if name, ok := doc["name"].(string); ok {
+                doc["displayName"] = "@" + name
+            }
+            // Add metadata
+            doc["_version"] = "v1"
+            return doc
+        },
+    })
+```
+
+### Preset Transforms
+
+Use built-in presets for common scenarios:
+
+```go
+// Default API Transform - renames _id to id, removes empty fields
+schema.WithTransform(mongoclient.DefaultAPITransform())
+
+// Secure Transform - omits sensitive fields
+schema.WithTransform(mongoclient.SecureTransform("password", "apiKey", "token"))
+
+// Snake Case Transform - converts common fields to snake_case
+schema.WithTransform(mongoclient.SnakeCaseTransform())
+```
+
+### JSON Schema with Transform
+
+Define transforms in JSON schema files:
+
+```json
+{
+  "name": "users",
+  "fields": {
+    "email": { "type": "string", "required": true },
+    "name": { "type": "string", "required": true },
+    "password": { "type": "string" }
+  },
+  "transform": {
+    "renameId": true,
+    "omit": ["password", "apiKey"],
+    "rename": {
+      "createdAt": "created_at",
+      "updatedAt": "updated_at"
+    },
+    "omitEmpty": true
+  }
+}
+```
+
+```go
+schema, _ := mongoclient.SchemaFromJSONFile("schemas/user.json")
+result := schema.Transform(user)
+```
+
+### Transform Methods Reference
+
+| Method | Description |
+|--------|-------------|
+| `schema.Transform(doc)` | Transform single document to `map[string]interface{}` |
+| `schema.TransformMany(docs)` | Transform slice of documents |
+| `schema.ToJSON(doc)` | Transform and marshal to JSON bytes |
+| `schema.ToJSONString(doc)` | Transform and marshal to JSON string |
+| `schema.ToJSONMany(docs)` | Transform slice and marshal to JSON bytes |
+| `schema.ToObject(doc)` | Alias for Transform |
+
+---
+
 ## 📝 Models Without Schema (Direct Collection Access)
 
 For simple cases or when you want to manage validation yourself, you can still use collections directly:
@@ -616,6 +771,7 @@ See [examples/](./examples/) directory:
 
 - **[Basic Example](./examples/basic/main.go)** - CRUD, queries, aggregations
 - **[Environment Config](./examples/env-config/main.go)** - Configuration patterns
+- **[Transform Example](./examples/transform/main.go)** - Transform documents for API responses
 
 ---
 
