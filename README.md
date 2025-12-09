@@ -344,7 +344,7 @@ Current packages available:
 | Package | Description | Latest Version | Install                                                          |
 |---------|-------------|----------------|------------------------------------------------------------------|
 | [env-util](./env-util) | Zero-dependency environment variable utilities with type safety | v0.0.2         | `go get github.com/isimtekin/go-packages/env-util@v0.0.2`        |
-| [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.1.0 | `go get github.com/isimtekin/go-packages/mongo-client@v0.1.0` |
+| [mongo-client](./mongo-client) | High-level MongoDB client wrapper with CRUD helpers and transactions | v0.1.1 | `go get github.com/isimtekin/go-packages/mongo-client@v0.1.1` |
 | [redis-client](./redis-client) | Redis client wrapper with multi-database support and connection pooling | v0.1.1         | `go get github.com/isimtekin/go-packages/redis-client@v0.1.1`    |
 | [nats-client](./nats-client) | NATS client wrapper with pub/sub, request/reply, JetStream streams and consumers | v0.1.0 | `go get github.com/isimtekin/go-packages/nats-client@v0.1.0` |
 | [crypto-utils](./crypto-utils) | Comprehensive cryptography utilities with AES, RSA, ECDSA, ECDH, hashing, and key derivation | v0.0.1         | `go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1`    |
