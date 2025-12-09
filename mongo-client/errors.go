@@ -13,6 +13,7 @@ var (
 	ErrNoDocuments        = mongo.ErrNoDocuments
 	ErrInvalidID          = errors.New("invalid ID format")
 	ErrEmptyFilter        = errors.New("filter cannot be empty")
+	ErrSchemaRequired     = errors.New("schema is required for model operations")
 )
 
 // IsNoDocuments checks if the error is a "no documents" error
