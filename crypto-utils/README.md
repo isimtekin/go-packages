@@ -51,7 +51,7 @@ Comprehensive, idiomatic Go cryptography utilities package providing AES encrypt
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/crypto-utils@v0.0.1
+go get github.com/isimtekin/go-packages/crypto-utils@v1.0.0
 ```
 
 ## Quick Start

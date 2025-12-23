@@ -301,6 +301,11 @@ git add package-name/
 git commit -m "package-name: description of changes"
 ```
 
+**Commit Message Rules:**
+- Do NOT add Claude Code signature or Co-Authored-By lines
+- Keep commit messages clean and concise
+- Use conventional commit format: `type: description` or `package-name: description`
+
 ### Branch Strategy
 - `main`: stable, released code
 - Feature branches: `feature/package-name-description`
