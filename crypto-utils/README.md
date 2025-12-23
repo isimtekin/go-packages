@@ -18,6 +18,13 @@ Comprehensive, idiomatic Go cryptography utilities package providing AES encrypt
 - **ECDH** - X25519, P-256, P-384, P-521 key exchange
 - PEM encoding/decoding for all key types
 
+### 📜 X.509 Certificate Management
+- **CA Generation** - Self-signed CA certificates (ECDSA P-256 or RSA)
+- **License Certificates** - Create signed certificates with custom extensions
+- **Certificate Verification** - Verify certificates against CA
+- **License Extraction** - Extract custom license data from certificates
+- JSON-based license extensions with custom OID
+
 ### 🔨 Hashing & MAC
 - **SHA-256, SHA-384, SHA-512** - Cryptographic hash functions
 - **HMAC-SHA256, HMAC-SHA512** - Message authentication codes
@@ -263,6 +270,76 @@ urlDecoded, _ := cryptoutils.DecodeBase64RawURL(urlEncoded)
 fmt.Printf("Decoded: %s\n", decoded)
 ```
 
+### X.509 License Certificates
+
+```go
+import (
+    "crypto/x509/pkix"
+    "time"
+
+    cryptoutils "github.com/isimtekin/go-packages/crypto-utils"
+)
+
+// 1. Generate CA (done once, store securely)
+caKey, caCert, err := cryptoutils.GenerateCA(cryptoutils.CertificateConfig{
+    Subject:   pkix.Name{CommonName: "MyApp License CA"},
+    NotBefore: time.Now(),
+    NotAfter:  time.Now().AddDate(10, 0, 0), // 10 years
+})
+if err != nil {
+    log.Fatal(err)
+}
+
+// 2. Create license certificate for customer
+license := cryptoutils.LicenseInfo{
+    CustomerID: "cust-123",
+    MaxApps:    10,
+    Features:   []string{"pro", "enterprise"},
+    CustomFields: map[string]string{
+        "region": "US",
+        "tier":   "gold",
+    },
+}
+
+licenseCert, _, err := cryptoutils.CreateLicenseCertificate(
+    caKey, caCert, license,
+    cryptoutils.CertificateConfig{
+        Subject:   pkix.Name{CommonName: "License: cust-123"},
+        NotBefore: time.Now(),
+        NotAfter:  time.Now().AddDate(1, 0, 0), // 1 year
+    },
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+// 3. Export to PEM for distribution
+certPEM := cryptoutils.EncodeCertificateToPEM(licenseCert)
+caPEM := cryptoutils.EncodeCertificateToPEM(caCert)
+
+// 4. On customer side: Load and verify
+loadedCert, _ := cryptoutils.DecodeCertificateFromPEM(certPEM)
+loadedCA, _ := cryptoutils.DecodeCertificateFromPEM(caPEM)
+
+if err := cryptoutils.VerifyLicenseCertificate(loadedCert, loadedCA); err != nil {
+    log.Fatal("Invalid license:", err)
+}
+
+// 5. Extract license information
+info, _ := cryptoutils.ExtractLicenseInfo(loadedCert)
+fmt.Printf("Customer: %s, Max Apps: %d\n", info.CustomerID, info.MaxApps)
+
+// 6. Check features
+if cryptoutils.HasFeature(info, "enterprise") {
+    fmt.Println("Enterprise features enabled!")
+}
+
+// 7. Check expiration
+if cryptoutils.IsLicenseExpired(loadedCert) {
+    fmt.Println("License has expired!")
+}
+```
+
 ## API Reference
 
 ### AES Encryption
@@ -318,6 +395,44 @@ fmt.Printf("Decoded: %s\n", decoded)
 | `EncodeECDHPublicKey(key *ecdh.PublicKey) []byte` | Encode public key |
 | `DecodeECDHPrivateKeyX25519(data []byte) (*ecdh.PrivateKey, error)` | Decode X25519 private key |
 | `DecodeECDHPublicKeyX25519(data []byte) (*ecdh.PublicKey, error)` | Decode X25519 public key |
+
+### X.509 Certificate Management
+
+| Function | Description |
+|----------|-------------|
+| `GenerateCA(config CertificateConfig) (*ecdsa.PrivateKey, *x509.Certificate, error)` | Generate ECDSA P-256 CA |
+| `GenerateCAWithRSA(bits int, config CertificateConfig) (*rsa.PrivateKey, *x509.Certificate, error)` | Generate RSA CA |
+| `CreateLicenseCertificate(caKey, caCert, license, config) (*x509.Certificate, *ecdsa.PrivateKey, error)` | Create license cert |
+| `VerifyLicenseCertificate(cert, caCert *x509.Certificate) error` | Verify certificate against CA |
+| `ExtractLicenseInfo(cert *x509.Certificate) (*LicenseInfo, error)` | Extract license data from cert |
+| `EncodeCertificateToPEM(cert *x509.Certificate) []byte` | Encode certificate to PEM |
+| `DecodeCertificateFromPEM(pemData []byte) (*x509.Certificate, error)` | Decode certificate from PEM |
+| `ValidateLicenseInfo(info *LicenseInfo) error` | Validate license information |
+| `IsLicenseExpired(cert *x509.Certificate) bool` | Check if certificate expired |
+| `IsLicenseNotYetValid(cert *x509.Certificate) bool` | Check if cert not yet valid |
+| `HasFeature(info *LicenseInfo, feature string) bool` | Check if license has feature |
+
+**LicenseInfo:**
+```go
+type LicenseInfo struct {
+    CustomerID   string            `json:"customerId"`
+    MaxApps      int               `json:"maxApps"`
+    Features     []string          `json:"features"`
+    IssuedAt     time.Time         `json:"issuedAt"`
+    CustomFields map[string]string `json:"customFields,omitempty"`
+}
+```
+
+**CertificateConfig:**
+```go
+type CertificateConfig struct {
+    Subject   pkix.Name
+    NotBefore time.Time  // Required: Certificate start time
+    NotAfter  time.Time  // Required: Certificate end time
+    IsCA      bool
+    KeyUsage  x509.KeyUsage
+}
+```
 
 ### Hashing
 
@@ -441,6 +556,16 @@ if err == cryptoutils.ErrInvalidKeySize {
 - `ErrKeyGenerationFailed` - Failed to generate cryptographic key
 - `ErrSignatureVerification` - Signature verification failed
 
+**Certificate Errors:**
+- `ErrInvalidCertificate` - Invalid or malformed certificate
+- `ErrCertificateExpired` - Certificate has expired
+- `ErrCertificateNotYetValid` - Certificate is not yet valid
+- `ErrInvalidCA` - Invalid CA certificate
+- `ErrVerificationFailed` - Certificate verification failed
+- `ErrInvalidLicenseData` - Invalid license data in certificate
+- `ErrLicenseExtNotFound` - License extension not found in certificate
+- `ErrInvalidValidityPeriod` - Invalid validity period (NotBefore/NotAfter)
+
 ## Testing
 
 ```bash
@@ -460,6 +585,7 @@ go tool cover -html=coverage.out
 See the examples in the test files:
 - `aes_test.go` - AES encryption examples
 - `crypto_test.go` - Comprehensive crypto operation examples
+- `x509_test.go` - X.509 certificate and license management examples
 
 ## Dependencies
 
