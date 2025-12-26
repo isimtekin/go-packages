@@ -107,6 +107,69 @@ func (c *Collection) FindAll(ctx context.Context, filter interface{}, results in
 	return cursor.All(ctx, results)
 }
 
+// SortOrder represents the sort direction
+type SortOrder int
+
+const (
+	// Asc represents ascending sort order (1)
+	Asc SortOrder = 1
+	// Desc represents descending sort order (-1)
+	Desc SortOrder = -1
+)
+
+// SortField represents a field and its sort order
+type SortField struct {
+	Field string
+	Order SortOrder
+}
+
+// SortAsc creates an ascending sort field
+func SortAsc(field string) SortField {
+	return SortField{Field: field, Order: Asc}
+}
+
+// SortDesc creates a descending sort field
+func SortDesc(field string) SortField {
+	return SortField{Field: field, Order: Desc}
+}
+
+// buildSortDocument builds a bson.D from sort fields
+func buildSortDocument(sorts ...SortField) bson.D {
+	sortDoc := bson.D{}
+	for _, s := range sorts {
+		sortDoc = append(sortDoc, bson.E{Key: s.Field, Value: int(s.Order)})
+	}
+	return sortDoc
+}
+
+// FindAllSorted finds all documents with sorting and decodes them into the results slice
+// Example: collection.FindAllSorted(ctx, filter, &results, SortDesc("createdAt"), SortAsc("name"))
+func (c *Collection) FindAllSorted(ctx context.Context, filter interface{}, results interface{}, sorts ...SortField) error {
+	opts := options.Find()
+	if len(sorts) > 0 {
+		opts.SetSort(buildSortDocument(sorts...))
+	}
+	return c.FindAll(ctx, filter, results, opts)
+}
+
+// FindAllSortedWithLimit finds documents with sorting and limit
+func (c *Collection) FindAllSortedWithLimit(ctx context.Context, filter interface{}, results interface{}, limit int64, sorts ...SortField) error {
+	opts := options.Find().SetLimit(limit)
+	if len(sorts) > 0 {
+		opts.SetSort(buildSortDocument(sorts...))
+	}
+	return c.FindAll(ctx, filter, results, opts)
+}
+
+// FindAllWithPagination finds documents with sorting, skip and limit for pagination
+func (c *Collection) FindAllWithPagination(ctx context.Context, filter interface{}, results interface{}, skip, limit int64, sorts ...SortField) error {
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
+	if len(sorts) > 0 {
+		opts.SetSort(buildSortDocument(sorts...))
+	}
+	return c.FindAll(ctx, filter, results, opts)
+}
+
 // InsertOne inserts a single document
 // Automatically sets createdAt and updatedAt if the document implements Timestamped interface
 func (c *Collection) InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*InsertOneResult, error) {

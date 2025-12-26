@@ -153,3 +153,39 @@ func TestGetTimeout(t *testing.T) {
 		t.Errorf("Expected default timeout to be 30s, got %v", timeout)
 	}
 }
+
+func TestListCollections_NilClient(t *testing.T) {
+	client := &Client{
+		client: nil,
+		config: &Config{},
+	}
+
+	ctx := context.Background()
+	collections, err := client.ListCollections(ctx)
+
+	if err != ErrClientNotConnected {
+		t.Errorf("Expected ErrClientNotConnected, got %v", err)
+	}
+
+	if collections != nil {
+		t.Error("Expected collections to be nil")
+	}
+}
+
+func TestCollectionExists_NilClient(t *testing.T) {
+	client := &Client{
+		client: nil,
+		config: &Config{},
+	}
+
+	ctx := context.Background()
+	exists, err := client.CollectionExists(ctx, "test")
+
+	if err != ErrClientNotConnected {
+		t.Errorf("Expected ErrClientNotConnected, got %v", err)
+	}
+
+	if exists {
+		t.Error("Expected exists to be false")
+	}
+}

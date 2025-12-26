@@ -20,7 +20,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 - 🪝 **Pre/Post Hooks** - Middleware for operations (like Mongoose) with conditions, async support, and priority
 - 🔧 **Functional options** - Clean configuration with functional options pattern
 - 🛠️ **Query builders** - Helper functions for building MongoDB queries
-- 📋 **Pagination support** - Built-in pagination helpers
+- 📋 **Pagination & Sorting** - Built-in pagination and sort helpers
 - ✅ **Type-safe** - Full TypeScript-like experience with Go
 - 🧪 **Well-tested** - Comprehensive test coverage
 
@@ -963,7 +963,42 @@ err := client.WithTransaction(ctx, func(sessCtx mongo.SessionContext) error {
 
 ---
 
-## 📋 Pagination
+## 📋 Pagination & Sorting
+
+### Sort Helpers
+
+```go
+// Simple sorting - descending by createdAt
+userModel.FindAllSorted(ctx, filter, &users, mongoclient.SortDesc("createdAt"))
+
+// Multiple sort fields
+userModel.FindAllSorted(ctx, filter, &users,
+    mongoclient.SortDesc("createdAt"),
+    mongoclient.SortAsc("name"),
+)
+
+// With limit
+userModel.FindAllSortedWithLimit(ctx, filter, &users, 10,
+    mongoclient.SortDesc("createdAt"),
+)
+
+// Full pagination (skip + limit + sort)
+userModel.FindAllWithPagination(ctx, filter, &users, 20, 10, // skip=20, limit=10
+    mongoclient.SortDesc("createdAt"),
+)
+```
+
+### Sort Order Constants
+
+```go
+mongoclient.Asc   // Ascending (1)
+mongoclient.Desc  // Descending (-1)
+
+mongoclient.SortAsc("field")   // Creates ascending sort
+mongoclient.SortDesc("field")  // Creates descending sort
+```
+
+### Traditional Pagination
 
 ```go
 pagination := &mongoclient.PaginationOptions{
@@ -977,6 +1012,24 @@ opts := options.Find().
     SetLimit(pagination.GetLimit())
 
 cursor, err := userModel.Find(ctx, filter, opts)
+```
+
+---
+
+## 🗄️ Database Operations
+
+### List Collections
+
+```go
+// Get all collection names in the database
+collections, err := client.ListCollections(ctx)
+// ["users", "products", "orders", ...]
+
+// Check if a collection exists
+exists, err := client.CollectionExists(ctx, "users")
+if exists {
+    fmt.Println("users collection exists")
+}
 ```
 
 ---

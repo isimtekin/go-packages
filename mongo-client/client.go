@@ -210,3 +210,35 @@ func (c *Client) GetTimeout() time.Duration {
 	}
 	return 30 * time.Second // default timeout
 }
+
+// ListCollections returns a list of collection names in the configured database
+func (c *Client) ListCollections(ctx context.Context) ([]string, error) {
+	if c.client == nil {
+		return nil, ErrClientNotConnected
+	}
+
+	opCtx := ctx
+	if c.config.OperationTimeout > 0 {
+		var cancel context.CancelFunc
+		opCtx, cancel = context.WithTimeout(ctx, c.config.OperationTimeout)
+		defer cancel()
+	}
+
+	return c.database.ListCollectionNames(opCtx, map[string]interface{}{})
+}
+
+// CollectionExists checks if a collection exists in the configured database
+func (c *Client) CollectionExists(ctx context.Context, name string) (bool, error) {
+	collections, err := c.ListCollections(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, coll := range collections {
+		if coll == name {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}

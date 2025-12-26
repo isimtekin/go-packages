@@ -294,3 +294,80 @@ func TestCollection_createOperationContext(t *testing.T) {
 		t.Errorf("Expected deadline around %v, got %v (diff: %v)", expectedDeadline, deadline, diff)
 	}
 }
+
+func TestSortAsc(t *testing.T) {
+	sort := SortAsc("name")
+
+	if sort.Field != "name" {
+		t.Errorf("Expected field 'name', got '%s'", sort.Field)
+	}
+	if sort.Order != Asc {
+		t.Errorf("Expected order Asc (1), got %d", sort.Order)
+	}
+}
+
+func TestSortDesc(t *testing.T) {
+	sort := SortDesc("createdAt")
+
+	if sort.Field != "createdAt" {
+		t.Errorf("Expected field 'createdAt', got '%s'", sort.Field)
+	}
+	if sort.Order != Desc {
+		t.Errorf("Expected order Desc (-1), got %d", sort.Order)
+	}
+}
+
+func TestBuildSortDocument_SingleField(t *testing.T) {
+	sortDoc := buildSortDocument(SortDesc("createdAt"))
+
+	if len(sortDoc) != 1 {
+		t.Errorf("Expected 1 sort field, got %d", len(sortDoc))
+	}
+	if sortDoc[0].Key != "createdAt" {
+		t.Errorf("Expected key 'createdAt', got '%s'", sortDoc[0].Key)
+	}
+	if sortDoc[0].Value != -1 {
+		t.Errorf("Expected value -1, got %v", sortDoc[0].Value)
+	}
+}
+
+func TestBuildSortDocument_MultipleFields(t *testing.T) {
+	sortDoc := buildSortDocument(SortDesc("createdAt"), SortAsc("name"))
+
+	if len(sortDoc) != 2 {
+		t.Errorf("Expected 2 sort fields, got %d", len(sortDoc))
+	}
+
+	// First field
+	if sortDoc[0].Key != "createdAt" {
+		t.Errorf("Expected first key 'createdAt', got '%s'", sortDoc[0].Key)
+	}
+	if sortDoc[0].Value != -1 {
+		t.Errorf("Expected first value -1, got %v", sortDoc[0].Value)
+	}
+
+	// Second field
+	if sortDoc[1].Key != "name" {
+		t.Errorf("Expected second key 'name', got '%s'", sortDoc[1].Key)
+	}
+	if sortDoc[1].Value != 1 {
+		t.Errorf("Expected second value 1, got %v", sortDoc[1].Value)
+	}
+}
+
+func TestBuildSortDocument_Empty(t *testing.T) {
+	sortDoc := buildSortDocument()
+
+	if len(sortDoc) != 0 {
+		t.Errorf("Expected empty sort document, got %d fields", len(sortDoc))
+	}
+}
+
+func TestSortOrder_Values(t *testing.T) {
+	if Asc != 1 {
+		t.Errorf("Expected Asc to be 1, got %d", Asc)
+	}
+	if Desc != -1 {
+		t.Errorf("Expected Desc to be -1, got %d", Desc)
+	}
+}
