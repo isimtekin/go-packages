@@ -230,8 +230,21 @@ func TimestampToTime(ts primitive.Timestamp) time.Time {
 
 // PaginationOptions holds pagination parameters
 type PaginationOptions struct {
-	Page     int64 // Current page (1-indexed)
-	PageSize int64 // Items per page
+	// Page number (1-indexed, default: 1)
+	Page int64
+
+	// Number of documents per page (default: 10, max: 1000)
+	PageSize int64
+
+	// Sort specification (e.g., bson.D{{"createdAt", -1}})
+	Sort interface{}
+
+	// Projection to include/exclude fields (e.g., bson.M{"password": 0})
+	Projection interface{}
+
+	// SkipCount skips the count query for better performance on large collections
+	// When true, Total and TotalPages will be 0 in the result
+	SkipCount bool
 }
 
 // GetSkip calculates the skip value for pagination
@@ -255,7 +268,7 @@ func (p *PaginationOptions) Validate() {
 	if p.PageSize <= 0 {
 		p.PageSize = 10
 	}
-	if p.PageSize > 100 {
-		p.PageSize = 100 // Max page size
+	if p.PageSize > 1000 {
+		p.PageSize = 1000 // Max page size
 	}
 }

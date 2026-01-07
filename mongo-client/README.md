@@ -20,7 +20,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 - 🪝 **Pre/Post Hooks** - Middleware for operations (like Mongoose) with conditions, async support, and priority
 - 🔧 **Functional options** - Clean configuration with functional options pattern
 - 🛠️ **Query builders** - Helper functions for building MongoDB queries
-- 📋 **Pagination & Sorting** - Built-in pagination and sort helpers
+- 📋 **Pagination & Sorting** - Offset-based and cursor-based pagination with full metadata
 - ✅ **Type-safe** - Full TypeScript-like experience with Go
 - 🧪 **Well-tested** - Comprehensive test coverage
 
@@ -998,7 +998,116 @@ mongoclient.SortAsc("field")   // Creates ascending sort
 mongoclient.SortDesc("field")  // Creates descending sort
 ```
 
+### Offset-Based Pagination (FindWithPagination)
+
+Full pagination with metadata - ideal for traditional page-based UIs:
+
+```go
+// Simple usage with defaults (page 1, 10 items)
+result, err := userModel.FindWithPagination(ctx, filter, nil)
+
+// With custom options
+opts := &mongoclient.PaginationOptions{
+    Page:       2,
+    PageSize:   20,
+    Sort:       bson.D{{"createdAt", -1}},
+    Projection: bson.M{"password": 0},
+    SkipCount:  false, // Set true for better performance on large collections
+}
+result, err := userModel.FindWithPagination(ctx, filter, opts)
+
+// Result contains full metadata
+fmt.Printf("Documents: %d\n", len(result.Documents))
+fmt.Printf("Total: %d\n", result.Total)         // Total matching documents
+fmt.Printf("Page: %d/%d\n", result.Page, result.TotalPages)
+fmt.Printf("Showing %d-%d\n", result.From, result.To)
+fmt.Printf("HasNext: %v, HasPrev: %v\n", result.HasNextPage, result.HasPrevPage)
+```
+
+**PaginatedResult Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Documents` | `[]bson.M` | Documents for the current page |
+| `Total` | `int64` | Total documents matching filter (0 if SkipCount) |
+| `Page` | `int64` | Current page number (1-indexed) |
+| `PageSize` | `int64` | Documents per page |
+| `TotalPages` | `int64` | Total number of pages |
+| `HasNextPage` | `bool` | Whether next page exists |
+| `HasPrevPage` | `bool` | Whether previous page exists |
+| `From` | `int64` | First document index on page (1-indexed) |
+| `To` | `int64` | Last document index on page |
+
+### Cursor-Based Pagination (FindWithCursor)
+
+More efficient for large datasets and real-time data - ideal for infinite scroll:
+
+```go
+// First page
+opts := &mongoclient.CursorOptions{
+    PageSize:    20,
+    CursorField: "_id", // Field used for cursor (default: "_id")
+    Sort:        bson.D{{"_id", 1}},
+}
+result, err := userModel.FindWithCursor(ctx, filter, opts)
+
+// Next page - use NextCursor from previous result
+opts.AfterCursor = result.NextCursor
+nextResult, err := userModel.FindWithCursor(ctx, filter, opts)
+
+// Previous page - use PrevCursor
+opts.AfterCursor = ""
+opts.BeforeCursor = result.PrevCursor
+prevResult, err := userModel.FindWithCursor(ctx, filter, opts)
+```
+
+**CursorResult Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Documents` | `[]bson.M` | Documents for the current page |
+| `PageSize` | `int64` | Documents per page |
+| `NextCursor` | `string` | Cursor for next page (empty if none) |
+| `PrevCursor` | `string` | Cursor for previous page (empty if first) |
+| `HasNextPage` | `bool` | Whether next page exists |
+| `HasPrevPage` | `bool` | Whether previous page exists |
+
+**When to use Cursor vs Offset:**
+
+| Feature | Offset (FindWithPagination) | Cursor (FindWithCursor) |
+|---------|---------------------------|------------------------|
+| Random page access | Yes (jump to page 5) | No (sequential only) |
+| Total count | Yes | No |
+| Performance on large data | Slower (skip is O(n)) | Faster (uses index) |
+| Real-time data | May skip/duplicate on changes | Consistent |
+| Best for | Admin panels, reports | Feeds, infinite scroll |
+
+### Helper Functions
+
+Build options from maps (useful for API query params):
+
+```go
+// Build PaginationOptions from map
+config := map[string]interface{}{
+    "page":       2,
+    "pageSize":   20,
+    "sort":       bson.D{{"createdAt", -1}},
+    "skipCount":  true,
+}
+opts := mongoclient.BuildPaginationOptions(config)
+
+// Build CursorOptions from map
+config := map[string]interface{}{
+    "pageSize":    20,
+    "afterCursor": "eyJmIjoiX2lkIiwiaWQiOiI2NWE...",
+    "cursorField": "_id",
+}
+opts := mongoclient.BuildCursorOptions(config)
+```
+
 ### Traditional Pagination
+
+For manual control with find options:
 
 ```go
 pagination := &mongoclient.PaginationOptions{

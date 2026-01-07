@@ -160,8 +160,15 @@ func TestPaginationOptions(t *testing.T) {
 	if p.Page != 1 {
 		t.Errorf("Expected page 1 after validation, got %d", p.Page)
 	}
-	if p.PageSize != 100 {
-		t.Errorf("Expected page size 100 (max), got %d", p.PageSize)
+	if p.PageSize != 200 {
+		t.Errorf("Expected page size 200 (valid, under max 1000), got %d", p.PageSize)
+	}
+
+	// Test max page size enforcement
+	p = &PaginationOptions{Page: 1, PageSize: 2000}
+	p.Validate()
+	if p.PageSize != 1000 {
+		t.Errorf("Expected page size 1000 (max), got %d", p.PageSize)
 	}
 }
 
