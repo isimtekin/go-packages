@@ -21,6 +21,7 @@ A minimalist, high-level MongoDB client wrapper for Go with convenient methods, 
 - 🔧 **Functional options** - Clean configuration with functional options pattern
 - 🛠️ **Query builders** - Helper functions for building MongoDB queries
 - 📋 **Pagination & Sorting** - Offset-based and cursor-based pagination with full metadata
+- 🔗 **Populate (Joins)** - Mongoose-like populate using $lookup for high-performance joins
 - ✅ **Type-safe** - Full TypeScript-like experience with Go
 - 🧪 **Well-tested** - Comprehensive test coverage
 
@@ -938,6 +939,240 @@ pipeline := mongoclient.A{
 var results []AggResult
 err := userModel.AggregateAll(ctx, pipeline, &results)
 ```
+
+---
+
+## 🔗 Populate (Joins)
+
+Mongoose-like populate using MongoDB's `$lookup` aggregation for high-performance joins. Unlike Mongoose which makes multiple queries, this uses a single aggregation pipeline for better performance.
+
+### Basic Usage
+
+```go
+// Product with userId reference
+// Schema: Field("userId", TypeObjectID, Ref("users"))
+
+// Simple populate - automatically converts "userId" -> "user"
+product, err := productModel.FindOneWithPopulate(ctx,
+    mongoclient.M{"_id": productID},
+    mongoclient.Populate("userId", "users"),
+)
+// Result: {"_id": ..., "name": "Product", "userId": ObjectID, "user": {"_id": ..., "name": "John", "email": "..."}}
+
+// With field selection (only fetch specific fields)
+product, err := productModel.FindOneWithPopulate(ctx,
+    mongoclient.M{"_id": productID},
+    mongoclient.Populate("userId", "users", "name", "email"), // only name and email
+)
+
+// Multiple populates
+product, err := productModel.FindOneWithPopulate(ctx,
+    mongoclient.M{"_id": productID},
+    mongoclient.Populate("userId", "users", "name"),
+    mongoclient.Populate("categoryId", "categories"),
+)
+```
+
+### Find All with Populate
+
+```go
+// Find all products with populated user and category
+products, err := productModel.FindAllWithPopulate(ctx,
+    mongoclient.M{"status": "active"},
+    mongoclient.Populate("userId", "users", "name", "email"),
+    mongoclient.Populate("categoryId", "categories", "name"),
+)
+
+// With limit
+products, err := productModel.FindWithPopulate(ctx,
+    mongoclient.M{"status": "active"},
+    []mongoclient.PopulateOptions{
+        mongoclient.Populate("userId", "users"),
+    },
+    10, // limit
+)
+```
+
+### One-to-Many Relations
+
+```go
+// Post with multiple tagIds (array of ObjectIDs)
+// Use PopulateMany to keep the result as an array
+
+post, err := postModel.FindOneWithPopulate(ctx,
+    mongoclient.M{"_id": postID},
+    mongoclient.PopulateMany("tagIds", "tags", "name", "color"),
+)
+// Result: {"_id": ..., "title": "Post", "tagIds": [...], "tag": [{"name": "Go"}, {"name": "MongoDB"}]}
+```
+
+### Fluent Query Builder
+
+```go
+// Chain multiple operations with fluent API
+products, err := productModel.Populate(mongoclient.M{"status": "active"}).
+    Join("userId", "users", "name", "email").       // one-to-one
+    Join("categoryId", "categories").               // one-to-one
+    JoinMany("tagIds", "tags", "name").             // one-to-many
+    Sort(bson.D{{"createdAt", -1}}).
+    Skip(20).
+    Limit(10).
+    All(ctx)
+
+// Get single document
+product, err := productModel.Populate(mongoclient.M{"_id": id}).
+    Join("userId", "users").
+    One(ctx)
+```
+
+### Custom Populate Options
+
+```go
+// Full control with PopulateOptions
+opts := mongoclient.PopulateOptions{
+    Path:         "authorEmail",     // Field in current collection
+    From:         "users",           // Target collection
+    LocalField:   "authorEmail",     // Local field (default: Path)
+    ForeignField: "email",           // Foreign field (default: "_id")
+    As:           "author",          // Output field name
+    Select:       []string{"name", "avatar"},
+}
+
+product, err := productModel.FindOneWithPopulate(ctx, filter, opts)
+
+// Or with fluent builder
+products, err := productModel.Populate(filter).
+    JoinWith(opts).
+    All(ctx)
+```
+
+### PopulateOptions Reference
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `Path` | `string` | required | Field holding the reference |
+| `From` | `string` | required | Target collection name |
+| `LocalField` | `string` | `Path` | Field in current collection |
+| `ForeignField` | `string` | `"_id"` | Field in target collection |
+| `As` | `string` | `Path` without suffix | Output field name |
+| `Select` | `[]string` | all fields | Fields to include from target |
+| `Unwind` | `*bool` | `true` | Convert array to single object |
+| `PreserveNull` | `*bool` | `true` | Keep doc if no match found |
+
+### Auto Field Naming
+
+The `As` field is automatically derived from `Path` by removing common suffixes:
+
+| Path | Auto As |
+|------|---------|
+| `userId` | `user` |
+| `categoryID` | `category` |
+| `author_id` | `author` |
+| `productRef` | `product` |
+
+### Schema-Aware Populate (Recommended)
+
+When using Models with schemas, you can use **safe** populate methods that read collection names from `Ref()` definitions:
+
+```go
+// Define schema with Ref
+productSchema := mongoclient.NewSchema().
+    Field("name", mongoclient.TypeString).
+    Field("userId", mongoclient.TypeObjectID, mongoclient.Ref("users")).
+    Field("categoryId", mongoclient.TypeObjectID, mongoclient.Ref("categories")).
+    Field("tagIds", mongoclient.TypeArray, mongoclient.Ref("tags"))
+
+productModel, _ := mongoclient.NewModel(client, "products", productSchema)
+
+// SAFE: Collection name comes from schema, not manual input
+// No risk of typos or wrong collection names!
+
+// Single field
+product, err := productModel.FindOnePopulateRef(ctx, filter, "userId")
+
+// Multiple fields
+product, err := productModel.FindOnePopulateRef(ctx, filter, "userId", "categoryId")
+
+// ALL ref fields automatically
+product, err := productModel.FindOnePopulateAll(ctx, filter)
+
+// Find all with refs
+products, err := productModel.FindAllPopulateRef(ctx, filter, "userId")
+products, err := productModel.FindAllPopulateAll(ctx, filter)
+
+// By ID
+product, err := productModel.FindByIDPopulateRef(ctx, id, "userId", "categoryId")
+product, err := productModel.FindByIDPopulateAll(ctx, id)
+```
+
+**Fluent Builder (Schema-Aware):**
+
+```go
+// JoinRef uses schema's Ref - SAFE!
+products, err := productModel.Populate(filter).
+    JoinRef("userId", "name", "email").    // Collection from Ref("users")
+    JoinRef("categoryId").                  // Collection from Ref("categories")
+    JoinRefMany("tagIds", "name").          // One-to-many from Ref("tags")
+    Sort(bson.D{{"createdAt", -1}}).
+    Limit(10).
+    All(ctx)
+
+// Or populate ALL refs at once
+products, err := productModel.Populate(filter).
+    JoinAllRefs().
+    All(ctx)
+```
+
+**Field Selection (Exclude Sensitive Data):**
+
+```go
+// Problem: User has password, apiKey - don't want these in response
+// Solution: Specify only the fields you want
+
+products, err := productModel.Populate(filter).
+    JoinRef("userId", "name", "email", "avatar").  // Only these fields from users
+    JoinRef("categoryId", "name", "icon").         // Only these from categories
+    All(ctx)
+
+// Result:
+// {
+//   "name": "iPhone 15",
+//   "userId": ObjectID("..."),
+//   "user": {
+//     "name": "John",        ✓
+//     "email": "j@ex.com",   ✓
+//     "avatar": "url...",    ✓
+//     // password: excluded  ✓
+//     // apiKey: excluded    ✓
+//   }
+// }
+
+// Without Select - gets ALL fields (including password!)
+productModel.Populate(filter).JoinRef("userId").All(ctx)  // ⚠️ password included
+
+// With Select - only specified fields
+productModel.Populate(filter).JoinRef("userId", "name", "email").All(ctx)  // ✓ safe
+```
+
+**Error Handling:**
+
+```go
+// If field has no Ref defined, you get a clear error
+product, err := productModel.FindOnePopulateRef(ctx, filter, "name")
+// Error: field 'name' does not have a Ref defined in schema
+
+// If field doesn't exist
+product, err := productModel.FindOnePopulateRef(ctx, filter, "notExists")
+// Error: field 'notExists' does not have a Ref defined in schema
+```
+
+### Performance Notes
+
+- Uses `$lookup` aggregation (single database query)
+- More efficient than Mongoose populate (which makes N+1 queries)
+- Works well with indexes on foreign fields
+- For very large datasets, consider limiting populated fields with `Select`
+- Schema-aware methods (`JoinRef`, `PopulateRef`) are recommended for type safety
 
 ---
 
