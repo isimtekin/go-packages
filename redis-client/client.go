@@ -56,6 +56,7 @@ func NewWithOptions(opts ...Option) (*Client, error) {
 func (c *Client) connect() error {
 	opts := &redis.Options{
 		Addr:            c.config.Addr,
+		Username:        c.config.Username,
 		Password:        c.config.Password,
 		DB:              c.config.DB,
 		MaxRetries:      c.config.MaxRetries,

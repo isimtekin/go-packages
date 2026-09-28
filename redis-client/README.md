@@ -23,8 +23,12 @@ A high-level Redis client wrapper for Go with multi-database support, connection
 ## =� Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/redis-client@v0.1.1
+go get github.com/isimtekin/go-packages/redis-client@v0.2.0
 ```
+
+### Redis ACL users
+
+Set `Username` together with `Password` to authenticate as a Redis ACL user. `WithUsername` and the `REDIS_USERNAME` environment variable provide the same setting. An empty username preserves password-only authentication. For an ACL user confined to a key and channel prefix, also set `Workspace` to that prefix.
 
 ## =� Quick Start
 

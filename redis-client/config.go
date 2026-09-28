@@ -9,6 +9,7 @@ import (
 type Config struct {
 	// Connection settings
 	Addr     string `json:"addr" yaml:"addr"`         // host:port address
+	Username string `json:"username" yaml:"username"` // ACL username (optional)
 	Password string `json:"password" yaml:"password"` // password (optional)
 	DB       int    `json:"db" yaml:"db"`             // database number
 
@@ -46,6 +47,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Addr:            "localhost:6379",
+		Username:        "",
 		Password:        "",
 		DB:              0,
 		MaxRetries:      3,

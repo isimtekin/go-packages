@@ -94,6 +94,7 @@ func TestMSet_WorkspaceLogic(t *testing.T) {
 func TestEnv_LoadConfigFromEnv(t *testing.T) {
 	t.Run("Load all config from env", func(t *testing.T) {
 		t.Setenv("REDIS_ADDR", "custom-host:6380")
+		t.Setenv("REDIS_USERNAME", "t_x")
 		t.Setenv("REDIS_PASSWORD", "secret123")
 		t.Setenv("REDIS_DB", "5")
 		t.Setenv("REDIS_WORKSPACE", "production")
@@ -119,6 +120,9 @@ func TestEnv_LoadConfigFromEnv(t *testing.T) {
 
 		if config.Addr != "custom-host:6380" {
 			t.Errorf("Expected addr 'custom-host:6380', got '%s'", config.Addr)
+		}
+		if config.Username != "t_x" {
+			t.Errorf("Expected username 't_x', got '%s'", config.Username)
 		}
 
 		if config.Password != "secret123" {

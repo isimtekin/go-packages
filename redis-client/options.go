@@ -12,6 +12,13 @@ func WithAddr(addr string) Option {
 	}
 }
 
+// WithUsername sets the Redis ACL username.
+func WithUsername(username string) Option {
+	return func(c *Config) {
+		c.Username = username
+	}
+}
+
 // WithPassword sets the Redis password
 func WithPassword(password string) Option {
 	return func(c *Config) {

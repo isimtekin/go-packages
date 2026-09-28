@@ -15,6 +15,7 @@ func LoadConfigFromEnv(prefix string) (*Config, error) {
 
 	config := &Config{
 		Addr:            env.GetString("ADDR", "localhost:6379"),
+		Username:        env.GetString("USERNAME", ""),
 		Password:        env.GetString("PASSWORD", ""),
 		DB:              env.GetInt("DB", 0),
 		Workspace:       env.GetString("WORKSPACE", ""),
