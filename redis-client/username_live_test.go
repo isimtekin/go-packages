@@ -20,7 +20,14 @@ func TestLive_ACLUserIsConfinedToItsWorkspace(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	admin := redis.NewClient(&redis.Options{Addr: addr, Username: os.Getenv("TENANT_REDIS_TEST_ADMIN_USER"), Password: os.Getenv("TENANT_REDIS_TEST_ADMIN_PASSWORD")})
-	defer admin.Close()
+	t.Cleanup(func() {
+		verifier := redis.NewClient(&redis.Options{Addr: addr, Username: os.Getenv("TENANT_REDIS_TEST_ADMIN_USER"), Password: os.Getenv("TENANT_REDIS_TEST_ADMIN_PASSWORD")})
+		defer verifier.Close()
+		result, err := verifier.Do(context.Background(), "ACL", "GETUSER", "t_live1").Result()
+		if err != redis.Nil && (err != nil || result != nil) {
+			t.Errorf("ACL user remained after test cleanup: result=%v err=%v", result, err)
+		}
+	})
 	const user, prefix, password = "t_live1", "t_live1", "tenantpw"
 	const allowList = "get set del exists expire incrby decrby hset hget hgetall lpush rpush lrange sadd smembers publish subscribe psubscribe unsubscribe punsubscribe ping auth hello client|setinfo"
 	args := []interface{}{"ACL", "SETUSER", user, "on", "resetpass", ">" + password, "resetkeys", "~" + prefix + ":*", "resetchannels", "&" + prefix + ":*", "-@all"}
@@ -35,6 +42,7 @@ func TestLive_ACLUserIsConfinedToItsWorkspace(t *testing.T) {
 		admin.Del(cleanupCtx, prefix+":k")
 		admin.Do(cleanupCtx, "ACL", "DELUSER", user)
 		admin.Do(cleanupCtx, "ACL", "SAVE")
+		admin.Close()
 	})
 	if err := admin.Do(ctx, "ACL", "SAVE").Err(); err != nil {
 		t.Fatal(err)
