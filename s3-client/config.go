@@ -22,6 +22,9 @@ type Config struct {
 	// Custom endpoint URL (for S3-compatible services like MinIO, LocalStack)
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
+	// PublicEndpoint is used only for presigned URLs; empty uses Endpoint.
+	PublicEndpoint string `json:"public_endpoint" yaml:"public_endpoint"`
+
 	// Use path-style addressing (required for some S3-compatible services)
 	UsePathStyle bool `json:"use_path_style" yaml:"use_path_style"`
 
@@ -123,6 +126,7 @@ func (c *Config) Clone() *Config {
 		AccessKeyID:          c.AccessKeyID,
 		SecretAccessKey:      c.SecretAccessKey,
 		Endpoint:             c.Endpoint,
+		PublicEndpoint:       c.PublicEndpoint,
 		UsePathStyle:         c.UsePathStyle,
 		Timeout:              c.Timeout,
 		MaxRetries:           c.MaxRetries,

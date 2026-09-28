@@ -5,8 +5,12 @@ A Go client library for AWS S3 and S3-compatible storage services with support f
 ## Installation
 
 ```bash
-go get github.com/isimtekin/go-packages/s3-client@v0.1.0
+go get github.com/isimtekin/go-packages/s3-client@v0.2.0
 ```
+
+### Public presigned URLs
+
+Set `PublicEndpoint` (or `WithPublicEndpoint` / `S3_PUBLIC_ENDPOINT`) to the URL that browsers can reach. Presigned uploads and downloads are signed for that host; ordinary S3 calls continue to use `Endpoint`. An empty public endpoint uses `Endpoint`. For downloads, `GetPresignedURLWithOptions` can pin `ResponseContentDisposition` and `ResponseContentType` in the signed URL.
 
 ## Features
 

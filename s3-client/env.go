@@ -19,6 +19,7 @@ func NewFromEnvWithDefaults(ctx context.Context) (*Client, error) {
 //   - {PREFIX}ACCESS_KEY_ID: AWS access key ID
 //   - {PREFIX}SECRET_ACCESS_KEY: AWS secret access key
 //   - {PREFIX}ENDPOINT: Custom endpoint URL (for S3-compatible services)
+//   - {PREFIX}PUBLIC_ENDPOINT: Endpoint for presigned URLs
 //   - {PREFIX}USE_PATH_STYLE: Use path-style addressing (true/false)
 //   - {PREFIX}TIMEOUT: Operation timeout (e.g., "30s", "1m")
 //   - {PREFIX}MAX_RETRIES: Maximum number of retries
@@ -40,6 +41,7 @@ func NewFromEnv(ctx context.Context, prefix string) (*Client, error) {
 	cfg.AccessKeyID = env.GetString("ACCESS_KEY_ID", cfg.AccessKeyID)
 	cfg.SecretAccessKey = env.GetString("SECRET_ACCESS_KEY", cfg.SecretAccessKey)
 	cfg.Endpoint = env.GetString("ENDPOINT", cfg.Endpoint)
+	cfg.PublicEndpoint = env.GetString("PUBLIC_ENDPOINT", cfg.PublicEndpoint)
 	cfg.UsePathStyle = env.GetBool("USE_PATH_STYLE", cfg.UsePathStyle)
 	cfg.Timeout = env.GetDuration("TIMEOUT", cfg.Timeout)
 	cfg.MaxRetries = env.GetInt("MAX_RETRIES", cfg.MaxRetries)

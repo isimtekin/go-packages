@@ -34,6 +34,13 @@ func WithEndpoint(endpoint string) Option {
 	}
 }
 
+// WithPublicEndpoint sets the endpoint used to sign presigned URLs.
+func WithPublicEndpoint(endpoint string) Option {
+	return func(c *Config) {
+		c.PublicEndpoint = endpoint
+	}
+}
+
 // WithPathStyle enables path-style addressing
 func WithPathStyle(enable bool) Option {
 	return func(c *Config) {

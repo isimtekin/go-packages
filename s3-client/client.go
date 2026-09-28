@@ -23,9 +23,10 @@ import (
 
 // Client represents the S3 client
 type Client struct {
-	cfg      *Config
-	s3Client *s3.Client
-	uploader *manager.Uploader
+	cfg         *Config
+	s3Client    *s3.Client
+	presignBase *s3.Client
+	uploader    *manager.Uploader
 
 	mu     sync.RWMutex
 	closed bool
@@ -52,9 +53,9 @@ type UploadInput struct {
 
 // UploadOutput contains the result of an upload operation
 type UploadOutput struct {
-	Key      string
-	Location string
-	ETag     string
+	Key       string
+	Location  string
+	ETag      string
 	VersionID string
 }
 
@@ -68,10 +69,10 @@ type ListInput struct {
 
 // ListOutput contains the result of a list operation
 type ListOutput struct {
-	Objects       []ObjectInfo
+	Objects        []ObjectInfo
 	CommonPrefixes []string
-	IsTruncated   bool
-	NextMarker    string
+	IsTruncated    bool
+	NextMarker     string
 }
 
 // New creates a new S3 client with the given configuration
@@ -141,6 +142,13 @@ func (c *Client) connect(ctx context.Context) error {
 
 	// Create S3 client
 	c.s3Client = s3.NewFromConfig(awsCfg, s3OptFns...)
+	c.presignBase = c.s3Client
+	if c.cfg.PublicEndpoint != "" {
+		c.presignBase = s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String(c.cfg.PublicEndpoint)
+			o.UsePathStyle = c.cfg.UsePathStyle
+		})
+	}
 
 	// Create uploader with multipart configuration
 	c.uploader = manager.NewUploader(c.s3Client, func(u *manager.Uploader) {
@@ -642,8 +650,19 @@ func (c *Client) Copy(ctx context.Context, sourceKey, destKey string) error {
 	return nil
 }
 
+// PresignGetOptions are response headers pinned by a presigned download.
+type PresignGetOptions struct {
+	ResponseContentDisposition string
+	ResponseContentType        string
+}
+
 // GetPresignedURL generates a presigned URL for downloading an object
 func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
+	return c.GetPresignedURLWithOptions(ctx, key, expiration, PresignGetOptions{})
+}
+
+// GetPresignedURLWithOptions signs a download with optional response headers.
+func (c *Client) GetPresignedURLWithOptions(ctx context.Context, key string, expiration time.Duration, o PresignGetOptions) (string, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -655,12 +674,16 @@ func (c *Client) GetPresignedURL(ctx context.Context, key string, expiration tim
 		return "", ErrEmptyKey
 	}
 
-	presignClient := s3.NewPresignClient(c.s3Client)
+	presignClient := s3.NewPresignClient(c.presignBase)
+	input := &s3.GetObjectInput{Bucket: aws.String(c.cfg.Bucket), Key: aws.String(key)}
+	if o.ResponseContentDisposition != "" {
+		input.ResponseContentDisposition = aws.String(o.ResponseContentDisposition)
+	}
+	if o.ResponseContentType != "" {
+		input.ResponseContentType = aws.String(o.ResponseContentType)
+	}
 
-	presignedReq, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(c.cfg.Bucket),
-		Key:    aws.String(key),
-	}, s3.WithPresignExpires(expiration))
+	presignedReq, err := presignClient.PresignGetObject(ctx, input, s3.WithPresignExpires(expiration))
 	if err != nil {
 		return "", c.wrapError(err, "presign failed")
 	}
@@ -681,7 +704,7 @@ func (c *Client) GetPresignedUploadURL(ctx context.Context, key string, expirati
 		return "", ErrEmptyKey
 	}
 
-	presignClient := s3.NewPresignClient(c.s3Client)
+	presignClient := s3.NewPresignClient(c.presignBase)
 
 	presignedReq, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(c.cfg.Bucket),
@@ -737,31 +760,31 @@ func isNotFoundError(err error) bool {
 func detectContentType(key string) string {
 	ext := strings.ToLower(filepath.Ext(key))
 	contentTypes := map[string]string{
-		".html": "text/html",
-		".htm":  "text/html",
-		".css":  "text/css",
-		".js":   "application/javascript",
-		".json": "application/json",
-		".xml":  "application/xml",
-		".txt":  "text/plain",
-		".pdf":  "application/pdf",
-		".zip":  "application/zip",
-		".gz":   "application/gzip",
-		".tar":  "application/x-tar",
-		".png":  "image/png",
-		".jpg":  "image/jpeg",
-		".jpeg": "image/jpeg",
-		".gif":  "image/gif",
-		".webp": "image/webp",
-		".svg":  "image/svg+xml",
-		".ico":  "image/x-icon",
-		".mp3":  "audio/mpeg",
-		".mp4":  "video/mp4",
-		".webm": "video/webm",
-		".woff": "font/woff",
+		".html":  "text/html",
+		".htm":   "text/html",
+		".css":   "text/css",
+		".js":    "application/javascript",
+		".json":  "application/json",
+		".xml":   "application/xml",
+		".txt":   "text/plain",
+		".pdf":   "application/pdf",
+		".zip":   "application/zip",
+		".gz":    "application/gzip",
+		".tar":   "application/x-tar",
+		".png":   "image/png",
+		".jpg":   "image/jpeg",
+		".jpeg":  "image/jpeg",
+		".gif":   "image/gif",
+		".webp":  "image/webp",
+		".svg":   "image/svg+xml",
+		".ico":   "image/x-icon",
+		".mp3":   "audio/mpeg",
+		".mp4":   "video/mp4",
+		".webm":  "video/webm",
+		".woff":  "font/woff",
 		".woff2": "font/woff2",
-		".ttf":  "font/ttf",
-		".otf":  "font/otf",
+		".ttf":   "font/ttf",
+		".otf":   "font/otf",
 	}
 
 	if ct, ok := contentTypes[ext]; ok {
