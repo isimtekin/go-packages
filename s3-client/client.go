@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 )
 
 // Client represents the S3 client
@@ -188,7 +189,7 @@ func (c *Client) Ping(ctx context.Context) error {
 		Bucket: aws.String(c.cfg.Bucket),
 	})
 	if err != nil {
-		return c.wrapError(err, "ping failed")
+		return c.wrapBucketError(err, "ping failed")
 	}
 
 	return nil
@@ -522,7 +523,7 @@ func (c *Client) List(ctx context.Context, input *ListInput) (*ListOutput, error
 
 	result, err := c.s3Client.ListObjectsV2(ctx, listInput)
 	if err != nil {
-		return nil, c.wrapError(err, "list failed")
+		return nil, c.wrapBucketError(err, "list failed")
 	}
 
 	output := &ListOutput{
@@ -590,7 +591,7 @@ func (c *Client) ListAll(ctx context.Context, prefix string) ([]ObjectInfo, erro
 
 		result, err := c.s3Client.ListObjectsV2(ctx, listInput)
 		if err != nil {
-			return nil, c.wrapError(err, "list all failed")
+			return nil, c.wrapBucketError(err, "list all failed")
 		}
 
 		for _, obj := range result.Contents {
@@ -691,8 +692,19 @@ func (c *Client) GetPresignedURLWithOptions(ctx context.Context, key string, exp
 	return presignedReq.URL, nil
 }
 
+// PresignPutOptions are request headers pinned by a presigned upload.
+type PresignPutOptions struct {
+	ContentType   string
+	ContentLength int64
+}
+
 // GetPresignedUploadURL generates a presigned URL for uploading an object
 func (c *Client) GetPresignedUploadURL(ctx context.Context, key string, expiration time.Duration) (string, error) {
+	return c.GetPresignedUploadURLWithOptions(ctx, key, expiration, PresignPutOptions{})
+}
+
+// GetPresignedUploadURLWithOptions signs an upload with optional request headers.
+func (c *Client) GetPresignedUploadURLWithOptions(ctx context.Context, key string, expiration time.Duration, o PresignPutOptions) (string, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -706,10 +718,15 @@ func (c *Client) GetPresignedUploadURL(ctx context.Context, key string, expirati
 
 	presignClient := s3.NewPresignClient(c.presignBase)
 
-	presignedReq, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(c.cfg.Bucket),
-		Key:    aws.String(key),
-	}, s3.WithPresignExpires(expiration))
+	input := &s3.PutObjectInput{Bucket: aws.String(c.cfg.Bucket), Key: aws.String(key)}
+	if o.ContentType != "" {
+		input.ContentType = aws.String(o.ContentType)
+	}
+	if o.ContentLength > 0 {
+		input.ContentLength = aws.Int64(o.ContentLength)
+	}
+
+	presignedReq, err := presignClient.PresignPutObject(ctx, input, s3.WithPresignExpires(expiration))
 	if err != nil {
 		return "", c.wrapError(err, "presign upload failed")
 	}
@@ -727,20 +744,40 @@ func (c *Client) Region() string {
 	return c.cfg.Region
 }
 
-// wrapError wraps AWS errors with appropriate package errors
+// wrapError wraps an AWS error of an object operation with the matching package
+// error; the AWS error stays in the chain for errors.As.
 func (c *Client) wrapError(err error, operation string) error {
+	return wrapAWSError(err, operation, ErrObjectNotFound)
+}
+
+// wrapBucketError wraps an AWS error of a bucket operation, where a bare 404
+// means the bucket is missing.
+func (c *Client) wrapBucketError(err error, operation string) error {
+	return wrapAWSError(err, operation, ErrBucketNotFound)
+}
+
+func wrapAWSError(err error, operation string, notFound error) error {
 	if err == nil {
 		return nil
 	}
 
-	// Check for HTTP response errors
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "NoSuchBucket":
+			return fmt.Errorf("%w: %s: %w", ErrBucketNotFound, operation, err)
+		case "NoSuchKey":
+			return fmt.Errorf("%w: %s: %w", ErrObjectNotFound, operation, err)
+		}
+	}
+
 	var respErr *awshttp.ResponseError
-	if ok := errors.As(err, &respErr); ok {
+	if errors.As(err, &respErr) {
 		switch respErr.HTTPStatusCode() {
 		case http.StatusNotFound:
-			return fmt.Errorf("%w: %s: %v", ErrObjectNotFound, operation, err)
+			return fmt.Errorf("%w: %s: %w", notFound, operation, err)
 		case http.StatusForbidden:
-			return fmt.Errorf("%w: %s: %v", ErrAccessDenied, operation, err)
+			return fmt.Errorf("%w: %s: %w", ErrAccessDenied, operation, err)
 		}
 	}
 

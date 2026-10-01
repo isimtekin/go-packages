@@ -265,6 +265,15 @@ url, err := client.GetPresignedUploadURL(ctx, "uploads/new-file.txt", 15*time.Mi
 fmt.Println("Upload URL:", url)
 ```
 
+`GetPresignedUploadURLWithOptions` pins request headers in the signature: a non-empty `ContentType`
+and a positive `ContentLength` are signed, and S3 refuses a PUT whose headers differ. The client must
+send exactly those headers.
+
+```go
+url, err := client.GetPresignedUploadURLWithOptions(ctx, "uploads/avatar.png", 15*time.Minute,
+    s3client.PresignPutOptions{ContentType: "image/png", ContentLength: 48213})
+```
+
 ## Using with MinIO
 
 MinIO is a high-performance, S3-compatible object storage. This client fully supports MinIO.
@@ -477,6 +486,10 @@ if err != nil {
 | `ErrUploadFailed` | Upload operation failed |
 | `ErrDownloadFailed` | Download operation failed |
 | `ErrDeleteFailed` | Delete operation failed |
+
+`ErrBucketNotFound` is returned for the S3 code `NoSuchBucket` and for a 404 on a bucket operation
+(`Ping`, `List`); `ErrObjectNotFound` for `NoSuchKey` and for a 404 on an object operation. The
+underlying AWS error stays in the chain, so `errors.As(err, &apiErr)` with a `smithy.APIError` works.
 
 ## Testing
 
