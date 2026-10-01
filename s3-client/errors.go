@@ -2,6 +2,7 @@ package s3client
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -16,6 +17,10 @@ var (
 
 	// ErrBucketNotFound indicates the bucket does not exist
 	ErrBucketNotFound = errors.New("bucket not found")
+
+	// ErrDeleteIncomplete indicates a DeleteMultiple the store refused for
+	// some keys (see DeleteMultipleError)
+	ErrDeleteIncomplete = errors.New("some objects were not deleted")
 
 	// ErrObjectNotFound indicates the object does not exist
 	ErrObjectNotFound = errors.New("object not found")
@@ -73,3 +78,17 @@ func IsConfigError(err error) bool {
 func IsClientClosedError(err error) bool {
 	return errors.Is(err, ErrClientClosed) || errors.Is(err, ErrAlreadyClosed)
 }
+
+// DeleteMultipleError lists the keys a DeleteMultiple could not delete, with
+// the store's error code for each. A key that did not exist is not listed.
+type DeleteMultipleError struct {
+	Failed []string
+	Codes  []string
+}
+
+func (e *DeleteMultipleError) Error() string {
+	return fmt.Sprintf("%d of the objects were not deleted", len(e.Failed))
+}
+
+// Is makes errors.Is(err, ErrDeleteIncomplete) hold.
+func (e *DeleteMultipleError) Is(target error) bool { return target == ErrDeleteIncomplete }

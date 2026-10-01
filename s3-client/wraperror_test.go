@@ -73,7 +73,8 @@ func TestWrapErrorNoSuchKey(t *testing.T) {
 }
 
 func TestWrapErrorPlain404OnObjectOperation(t *testing.T) {
-	client := fakeS3(t, http.StatusNotFound, "")
+	// The bucket exists; only the object answers a bodiless 404.
+	client := routedS3(t, http.StatusOK, http.StatusNotFound, "")
 	_, err := client.GetInfo(context.Background(), "k")
 	if !errors.Is(err, ErrObjectNotFound) {
 		t.Fatalf("GetInfo error = %v, want ErrObjectNotFound", err)

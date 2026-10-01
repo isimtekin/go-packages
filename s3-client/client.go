@@ -393,7 +393,7 @@ func (c *Client) DeleteMultiple(ctx context.Context, keys []string) error {
 		}
 	}
 
-	_, err := c.s3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+	out, err := c.s3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
 		Bucket: aws.String(c.cfg.Bucket),
 		Delete: &types.Delete{
 			Objects: objects,
@@ -404,6 +404,19 @@ func (c *Client) DeleteMultiple(ctx context.Context, keys []string) error {
 		return c.wrapError(err, "delete multiple failed")
 	}
 
+	// Quiet mode still lists every key the store refused. A key that did not
+	// exist is already gone.
+	var failed DeleteMultipleError
+	for _, e := range out.Errors {
+		if aws.ToString(e.Code) == "NoSuchKey" {
+			continue
+		}
+		failed.Failed = append(failed.Failed, aws.ToString(e.Key))
+		failed.Codes = append(failed.Codes, aws.ToString(e.Code))
+	}
+	if len(failed.Failed) > 0 {
+		return &failed
+	}
 	return nil
 }
 
@@ -429,6 +442,10 @@ func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	})
 	if err != nil {
 		if isNotFoundError(err) {
+			// A HEAD answers a bodiless 404 for a missing bucket too.
+			if c.bucketMissing(ctx) {
+				return false, fmt.Errorf("%w: exists check failed: %w", ErrBucketNotFound, err)
+			}
 			return false, nil
 		}
 		return false, c.wrapError(err, "exists check failed")
@@ -458,6 +475,10 @@ func (c *Client) GetInfo(ctx context.Context, key string) (*ObjectInfo, error) {
 		Key:    aws.String(key),
 	})
 	if err != nil {
+		// A HEAD answers a bodiless 404 for a missing bucket too.
+		if isNotFoundError(err) && c.bucketMissing(ctx) {
+			return nil, fmt.Errorf("%w: get info failed: %w", ErrBucketNotFound, err)
+		}
 		return nil, c.wrapError(err, "get info failed")
 	}
 
@@ -828,4 +849,12 @@ func detectContentType(key string) string {
 		return ct
 	}
 	return "application/octet-stream"
+}
+
+// bucketMissing tells whether the configured bucket does not exist: a HEAD on
+// the bucket that answers 404. Any other answer (including an error) is not
+// proof of a missing bucket.
+func (c *Client) bucketMissing(ctx context.Context) bool {
+	_, err := c.s3Client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(c.cfg.Bucket)})
+	return err != nil && isNotFoundError(err)
 }
